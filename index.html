@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flow Map Studio</title>
+</head>
+<body>
+<div class="app">
+
+  <!-- Left Toolbar -->
+  <aside class="toolbar" id="toolbar">
+    <button class="tool-btn active" data-tool="select" title="Select (V)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4l7 18 3-8 8-3z"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="brush" title="Brush (B)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20c3-1 3-4 3-6 2 1 5 1 7-1l5-5-4-4-5 5c-2 2-2 5-1 7-2 0-5 0-6 3z"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="eraser" title="Eraser (E)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="10" width="14" height="8" rx="1.5" transform="rotate(-20 12 14)"/><path d="M9 18h9"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="pen" title="Pen (P)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+    </button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" data-tool="arrow" title="Arrow (A)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20 20 4M20 4h-8M20 4v8"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="circle" title="Circle (C)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="7"/><path d="M12 5c3 1 6 3 7 7"/><path d="M18 10l1 2-2 1"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="swirl" title="Swirl (S)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 12c0-4 3-7 6-6s3 6-1 7-6-3-5-7 4-6 7-4"/></svg>
+    </button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" data-tool="radial" title="Radial (D)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="wave" title="Wave (W)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 12c1.5-3 3-3 4.5 0s3 3 4.5 0 3-3 4.5 0 3 3 4.5 0"/></svg>
+    </button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" data-tool="fill" title="Fill (F)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12.5 2.5l9 9-7.5 7.5-9-9z"/><path d="M5 16l-1.5 5.5L9 20"/><circle cx="18" cy="6" r="3" fill="currentColor" opacity="0.3"/></svg>
+    </button>
+  </aside>
+
+  <!-- Center Stage -->
+  <main class="stage-wrap">
+    <div class="stage-header">
+      <div class="header-left">
+        <div class="brand">
+          <span class="brand-title">Flow Map Studio</span>
+        </div>
+      </div>
+      <div class="header-center">
+        <span class="coords" id="coordsDisplay"></span>
+      </div>
+      <div class="header-right">
+        <button id="undoBtn" title="Ctrl+Z" disabled>↶</button>
+        <button id="resetBtn" title="Reset">Reset</button>
+        <button id="exampleBtn" class="accent">Demo</button>
+        <button id="exportBtn" class="primary">Export PNG</button>
+        <button id="exportProjectBtn">Export</button>
+        <button id="importProjectBtn">Import</button>
+      </div>
+    </div>
+    <div id="stage">
+      <canvas id="imgCanvas"></canvas>
+      <canvas id="flowCanvas"></canvas>
+      <canvas id="overlayCanvas"></canvas>
+      <canvas id="previewCanvas"></canvas>
+    </div>
+    <div class="legend">
+      <span><b class="rr">R</b>=horizontal · <b class="gg">G</b>=vertical · 128=neutral · 0=neg · 255=pos</span>
+    </div>
+  </main>
+
+  <!-- Panel Resize Handle -->
+  <div class="panel-resize" id="panelResize"></div>
+
+  <!-- Right Panel -->
+  <aside class="rpanel" id="rpanel">
+    <!-- Tool Options (top half) -->
+    <div class="rpanel-top" id="toolOptions">
+      <div class="section" id="canvasFormatSection">
+        <div class="section-title"><span class="st-chevron">▸</span><span class="st-label">Canvas</span></div>
+        <div class="section-body">
+          <div class="field">
+            <select id="canvasFormatSelect">
+              <option value="900x600">900 × 600</option>
+              <option value="1024x768">1024 × 768</option>
+              <option value="1280x720">1280 × 720</option>
+              <option value="1920x1080">1920 × 1080</option>
+              <option value="1024x1024">1024 × 1024</option>
+              <option value="2048x2048">2048 × 2048</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <div class="field" id="canvasCustomDims" style="display:none;">
+            <div class="field-row"><span class="field-label">Width</span><span class="field-value" id="canvasWVal">900</span></div>
+            <input type="range" id="canvasW" min="100" max="4096" value="900" step="10">
+            <div class="field-row"><span class="field-label">Height</span><span class="field-value" id="canvasHVal">600</span></div>
+            <input type="range" id="canvasH" min="100" max="4096" value="600" step="10">
+            <button id="applyCanvasSize" class="full">Apply Size</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section" id="refImgSection">
+        <div class="section-title"><span class="st-chevron">▸</span><span class="st-label">Reference</span></div>
+        <div class="section-body">
+          <input type="file" id="imgFileInput" accept="image/*">
+          <button class="file-btn" id="imgFileBtn">Load image…</button>
+          <button class="file-btn" id="autoGenBtn" disabled title="Load an image first">Auto-flow from image</button>
+          <div id="waterOpts" style="display:none;">
+            <div class="field">
+              <div class="field-row"><span class="field-label">Water color</span><span class="field-value" id="waterHueVal">210°</span></div>
+              <input type="range" id="waterHue" min="0" max="360" value="210">
+            </div>
+            <div class="field">
+              <div class="field-row"><span class="field-label">Range</span><span class="field-value" id="waterRangeVal">40°</span></div>
+              <input type="range" id="waterRange" min="10" max="180" value="40">
+            </div>
+            <canvas id="waterHueBar" width="160" height="14" style="width:100%;border-radius:3px;display:block;margin:2px 0 6px;"></canvas>
+            <canvas id="waterPreview" width="80" height="56" style="width:100%;border-radius:4px;display:block;"></canvas>
+            <div class="field">
+              <div class="field-row"><span class="field-label">Blur passes</span><span class="field-value" id="autoBlurVal">8</span></div>
+              <input type="range" id="autoBlur" min="0" max="20" value="8">
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-row"><span class="field-label">Opacity</span><span class="field-value" id="opacityVal">100%</span></div>
+            <input type="range" id="opacity" min="0" max="100" value="100">
+          </div>
+        </div>
+      </div>
+
+      <div class="section" id="selectOpts" style="display:none;">
+        <div class="section-title"><span class="st-chevron">▸</span><span class="st-label">Select</span></div>
+        <div class="section-body">
+          <p class="hint">Click a constraint or pen path to select it. Drag to move. For arrows, drag endpoint handles. For pen paths, Alt+click anchor to delete, click path to add point. Press Delete to remove.</p>
+        </div>
+      </div>
+
+      <div class="section" id="layerProps" style="display:none;">
+        <!-- dynamically populated by updateLayerProps() -->
+      </div>
+
+      <div class="section" id="brushOpts">
+        <div class="section-title"><span class="st-chevron">▸</span><span class="st-label">Brush</span></div>
+        <div class="section-body">
+          <div class="field">
+            <div class="field-row"><span class="field-label">Size</span><span class="field-value" id="brushSizeVal">30 px</span></div>
+            <input type="range" id="brushSize" min="4" max="150" value="30">
+          </div>
+          <div class="field">
+            <div class="field-row"><span class="field-label">Strength</span><span class="field-value" id="brushStrengthVal">1</span></div>
+            <input type="range" id="brushStrength" min="5" max="100" value="100">
+          </div>
+          <div class="field">
+            <div class="field-row"><span class="field-label">Feather</span><span class="field-value" id="brushFeatherVal">0.50</span></div>
+            <input type="range" id="brushFeather" min="0" max="100" value="50">
+          </div>
+        </div>
+      </div>
+
+      <div class="section" id="fillOpts" style="display:none;">
+        <div class="section-title"><span class="st-chevron">▸</span><span class="st-label">Fill</span></div>
+        <div class="section-body">
+          <p class="hint">Click & drag to set flow direction. Fills connected similar pixels on the active brush layer.</p>
+          <div class="field">
+            <div class="field-row"><span class="field-label">Tolerance</span><span class="field-value" id="fillToleranceVal">30</span></div>
+            <input type="range" id="fillTolerance" min="0" max="127" value="30">
+          </div>
+        </div>
+      </div>
+
+      <div class="section" id="shapeOpts" style="display:none;">
+        <div class="section-title"><span class="st-chevron">▸</span><span class="st-label">Constraint</span></div>
+        <div class="section-body">
+          <div class="field">
+            <div class="field-row"><span class="field-label">Radius</span><span class="field-value" id="arrowRadiusVal">80 px</span></div>
+            <input type="range" id="arrowRadius" min="10" max="400" value="80">
+          </div>
+          <div class="field">
+            <div class="field-row"><span class="field-label">Strength</span><span class="field-value" id="arrowStrengthVal">1</span></div>
+            <input type="range" id="arrowStrength" min="5" max="100" value="100">
+          </div>
+          <div class="field">
+            <div class="field-row"><span class="field-label">Feather</span><span class="field-value" id="arrowFeatherVal">0.35</span></div>
+            <input type="range" id="arrowFeather" min="0" max="100" value="35">
+          </div>
+          <div class="field" id="rotationDirPanel">
+            <div class="field-row"><span class="field-label">Direction</span></div>
+            <div class="seg">
+              <button id="cwBtn" class="active">↻ CW</button>
+              <button id="ccwBtn">↺ CCW</button>
+            </div>
+          </div>
+          <div class="field" id="spiralPanel" style="display:none;">
+            <div class="field-row"><span class="field-label">Spiral</span><span class="field-value" id="spiralFactorVal">+0.40</span></div>
+            <input type="range" id="spiralFactor" min="-100" max="100" value="40">
+          </div>
+          <div class="field" id="wavePanel" style="display:none;">
+            <div class="field-row"><span class="field-label">Frequency</span><span class="field-value" id="waveFrequencyVal">1.00</span></div>
+            <input type="range" id="waveFrequency" min="25" max="800" value="100">
+          </div>
+          <div class="field" id="waveAmpPanel" style="display:none;">
+            <div class="field-row"><span class="field-label">Amplitude</span><span class="field-value" id="waveAmplitudeVal">25 px</span></div>
+            <input type="range" id="waveAmplitude" min="0" max="200" value="25">
+          </div>
+          <div class="field" id="waveOffPanel" style="display:none;">
+            <div class="field-row"><span class="field-label">Offset</span><span class="field-value" id="waveOffsetVal">0.00</span></div>
+            <input type="range" id="waveOffset" min="-314" max="314" value="0">
+          </div>
+        </div>
+      </div>
+
+      <div class="section" id="blurSection">
+        <div class="section-title"><span class="st-chevron">▸</span><span class="st-label">Blur</span></div>
+        <div class="section-body">
+          <div class="field">
+            <div class="field-row"><span class="field-label">Passes</span><span class="field-value" id="blurAmountVal">4</span></div>
+            <input type="range" id="blurAmount" min="0" max="20" value="4">
+          </div>
+          <button id="applyBlurBtn" class="full">Apply Blur</button>
+        </div>
+      </div>
+
+      <div class="section" id="encodingSection">
+        <div class="section-title"><span class="st-chevron">▸</span><span class="st-label">Encoding</span></div>
+        <div class="section-body">
+          <label class="checkbox-row"><input type="checkbox" id="invertX"> Invert R</label>
+          <label class="checkbox-row"><input type="checkbox" id="invertY"> Invert G</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Layers Panel (bottom half) -->
+    <div class="rpanel-bottom">
+      <div class="layer-header">
+        <span class="section-title">Layers</span>
+        <div class="layer-actions">
+          <button id="newBrushLayerBtn" class="mini" title="New brush layer">+ Brush</button>
+          <button id="addMaskBtn" class="mini" title="Add mask to selected layer">+ Mask</button>
+        </div>
+      </div>
+      <div class="layer-list" id="layerList">
+        <!-- dynamically populated -->
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div class="hud" id="hud"><span id="hudText"></span><div class="hud-bar" id="hudBar" style="display:none;width:60px"><div class="hud-bar-fill" id="hudBarFill"></div></div></div>
+
+<!-- Three.js Demo Modal -->
+<div class="modal-overlay" id="demoModal" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Flow Map Water Demo</span>
+      <button class="modal-close" id="demoClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <canvas id="demoCanvas"></canvas>
+    </div>
+    <div class="modal-footer">
+      <button id="demoRestart">Restart</button>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://esm.sh/three@0.172.0"
+  }
+}
+</script>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
