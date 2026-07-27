@@ -1,12 +1,10 @@
 import './style.css';
 import { state } from './state.js';
 import { setStageSize } from './canvas.js';
-import { renderComposite, saveToStorage } from './rendering.js';
+import { renderComposite } from './rendering.js';
 import { makeBrushLayer, refreshLayerPanel } from './layers.js';
-import { loadProject } from './ui.js';
-import './interaction.js';
-
-const STORAGE_KEY = 'flowmap-studio';
+import { STORAGE_KEY, loadProject, saveToStorage } from './project.js';
+import './preview.js';
 
 const loaded = (() => {
   try {

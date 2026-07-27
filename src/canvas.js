@@ -10,6 +10,7 @@ export const flowCtx = flowCanvas.getContext('2d', { willReadFrequently: true })
 export const ovCtx = overlayCanvas.getContext('2d');
 export const pvCtx = previewCanvas.getContext('2d');
 
+export const TAU = Math.PI * 2;
 export const HANDLE_RADIUS = 6;
 
 export function clamp8(v) { return v < 0 ? 0 : (v > 255 ? 255 : v); }

@@ -36,6 +36,48 @@ export function samplePenPath(anchors, closed) {
   return pts;
 }
 
+const TAU = Math.PI * 2;
+
+export function drawPenPath(ctx, anchors, closed) {
+  if (anchors.length < 2) return;
+  ctx.beginPath();
+  ctx.moveTo(anchors[0].x, anchors[0].y);
+  for (let i = 1; i < anchors.length; i++) {
+    const a = anchors[i - 1], b = anchors[i];
+    ctx.bezierCurveTo(a.h2x, a.h2y, b.h1x, b.h1y, b.x, b.y);
+  }
+  if (closed && anchors.length > 2) {
+    const a = anchors[anchors.length - 1], b = anchors[0];
+    ctx.bezierCurveTo(a.h2x, a.h2y, b.h1x, b.h1y, b.x, b.y);
+  }
+  ctx.stroke();
+}
+
+export function drawPenHandles(ctx, anchors, opts = {}) {
+  const { handleRadius = 4, anchorSize = 5, firstColor = 'rgba(242,184,75,0.95)', otherColor = 'rgba(255,255,255,0.9)' } = opts;
+  for (let i = 0; i < anchors.length; i++) {
+    const a = anchors[i];
+    if (a.h1x !== a.x || a.h1y !== a.y) {
+      ctx.strokeStyle = 'rgba(61,220,151,0.6)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(a.h1x, a.h1y); ctx.stroke();
+      ctx.beginPath(); ctx.arc(a.h1x, a.h1y, handleRadius, 0, TAU);
+      ctx.fillStyle = 'rgba(61,220,151,0.9)'; ctx.fill();
+      ctx.strokeStyle = '#1a1c22'; ctx.lineWidth = 1; ctx.stroke();
+    }
+    if (a.h2x !== a.x || a.h2y !== a.y) {
+      ctx.strokeStyle = 'rgba(61,220,151,0.6)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(a.h2x, a.h2y); ctx.stroke();
+      ctx.beginPath(); ctx.arc(a.h2x, a.h2y, handleRadius, 0, TAU);
+      ctx.fillStyle = 'rgba(61,220,151,0.9)'; ctx.fill();
+      ctx.strokeStyle = '#1a1c22'; ctx.lineWidth = 1; ctx.stroke();
+    }
+    ctx.fillStyle = i === 0 ? firstColor : otherColor;
+    ctx.strokeStyle = '#1a1c22'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.rect(a.x - anchorSize, a.y - anchorSize, anchorSize * 2, anchorSize * 2);
+    ctx.fill(); ctx.stroke();
+  }
+}
+
 export function hitPenAnchor(px, py, anchors, threshold) {
   for (let i = anchors.length - 1; i >= 0; i--) {
     if (Math.hypot(px - anchors[i].x, py - anchors[i].y) <= threshold) return i;

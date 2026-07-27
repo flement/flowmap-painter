@@ -1,6 +1,6 @@
 import { state } from './state.js';
-import { previewCanvas, pvCtx } from './canvas.js';
-import { samplePenPath, hitPenAnchor, insertPenAnchor } from './bezier.js';
+import { previewCanvas, pvCtx, TAU } from './canvas.js';
+import { samplePenPath, hitPenAnchor, insertPenAnchor, drawPenPath, drawPenHandles } from './bezier.js';
 import { renderComposite, stampInto, rotationalVector, floodFillBrush } from './rendering.js';
 import { drawOverlay, drawArrowHead, hitTestConstraint, hitArrowHandle } from './overlay.js';
 import { makeBrushLayer, refreshLayerPanel, selectLayer, hideLayerProps } from './layers.js';
@@ -27,13 +27,13 @@ function drawHoverPreview(p) {
   if (state.currentTool === 'brush' || state.currentTool === 'eraser') {
     pvCtx.strokeStyle = state.currentTool === 'eraser' ? 'rgba(255,93,115,0.8)' : 'rgba(242,184,75,0.8)';
     pvCtx.beginPath();
-    pvCtx.arc(p.x, p.y, state.brushSize, 0, Math.PI * 2);
+    pvCtx.arc(p.x, p.y, state.brushSize, 0, TAU);
     pvCtx.stroke();
   } else if (state.currentTool === 'pen') {
     if (state.penAnchors.length > 0) drawPenPreviewBezier();
     pvCtx.strokeStyle = 'rgba(242,184,75,0.8)';
     pvCtx.beginPath();
-    pvCtx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+    pvCtx.arc(p.x, p.y, 6, 0, TAU);
     pvCtx.stroke();
     pvCtx.fillStyle = 'rgba(242,184,75,0.15)';
     pvCtx.fill();
@@ -42,7 +42,7 @@ function drawHoverPreview(p) {
     pvCtx.strokeStyle = 'rgba(242,184,75,0.8)';
     pvCtx.lineWidth = 2;
     pvCtx.beginPath();
-    pvCtx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+    pvCtx.arc(p.x, p.y, 10, 0, TAU);
     pvCtx.stroke();
     pvCtx.fillStyle = 'rgba(242,184,75,0.2)';
     pvCtx.fill();
@@ -51,11 +51,11 @@ function drawHoverPreview(p) {
     pvCtx.strokeStyle = 'rgba(242,184,75,0.5)';
     pvCtx.setLineDash([5, 4]);
     pvCtx.beginPath();
-    pvCtx.arc(p.x, p.y, state.arrowRadius, 0, Math.PI * 2);
+    pvCtx.arc(p.x, p.y, state.constraintRadius, 0, TAU);
     pvCtx.stroke();
     pvCtx.setLineDash([]);
     pvCtx.beginPath();
-    pvCtx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+    pvCtx.arc(p.x, p.y, 2.5, 0, TAU);
     pvCtx.fillStyle = 'rgba(242,184,75,0.9)';
     pvCtx.fill();
   } else {
@@ -78,8 +78,8 @@ function drawArrowPreview(s, p) {
   if (len > 4) drawArrowHead(pvCtx, p.x, p.y, Math.atan2(p.y - s.y, p.x - s.x), 12);
   pvCtx.setLineDash([4, 4]);
   pvCtx.strokeStyle = 'rgba(242,184,75,0.35)';
-  pvCtx.beginPath(); pvCtx.arc(s.x, s.y, state.arrowRadius, 0, Math.PI * 2); pvCtx.stroke();
-  if (len > 4) { pvCtx.beginPath(); pvCtx.arc(p.x, p.y, state.arrowRadius, 0, Math.PI * 2); pvCtx.stroke(); }
+  pvCtx.beginPath(); pvCtx.arc(s.x, s.y, state.constraintRadius, 0, TAU); pvCtx.stroke();
+  if (len > 4) { pvCtx.beginPath(); pvCtx.arc(p.x, p.y, state.constraintRadius, 0, TAU); pvCtx.stroke(); }
   pvCtx.setLineDash([]);
 }
 
@@ -88,16 +88,16 @@ function drawRotationalPreview(center, p, tool) {
   const radius = Math.hypot(p.x - center.x, p.y - center.y);
   pvCtx.strokeStyle = 'rgba(242,184,75,0.8)';
   pvCtx.setLineDash([5, 4]); pvCtx.lineWidth = 1.5;
-  pvCtx.beginPath(); pvCtx.arc(center.x, center.y, radius, 0, Math.PI * 2); pvCtx.stroke();
+  pvCtx.beginPath(); pvCtx.arc(center.x, center.y, radius, 0, TAU); pvCtx.stroke();
   pvCtx.setLineDash([]);
-  pvCtx.beginPath(); pvCtx.arc(center.x, center.y, 3, 0, Math.PI * 2);
+  pvCtx.beginPath(); pvCtx.arc(center.x, center.y, 3, 0, TAU);
   pvCtx.fillStyle = 'rgba(242,184,75,0.95)'; pvCtx.fill();
   if (radius < 6) return;
   const isRadial = tool === 'radial';
   const radialDir = tool === 'radial' ? state.rotationDir : 0;
   const spiral = tool === 'swirl' ? state.spiralFactor : 0;
   for (let i = 0; i < 8; i++) {
-    const ang = (i / 8) * Math.PI * 2;
+    const ang = (i / 8) * TAU;
     const dx = Math.cos(ang) * radius, dy = Math.sin(ang) * radius;
     let vx, vy;
     if (isRadial) {
@@ -121,7 +121,7 @@ function drawWavePreview(s, p) {
   const dirx = dx / len, diry = dy / len;
   const perpX = -diry, perpY = dirx;
   const freq = state.waveFrequency || 1;
-  const amp = state.waveAmplitude || Math.round(state.arrowRadius * 0.3);
+  const amp = state.waveAmplitude || Math.round(state.constraintRadius * 0.3);
   const off = state.waveOffset || 0;
   pvCtx.strokeStyle = 'rgba(242,184,75,0.9)';
   pvCtx.lineWidth = 2;
@@ -130,15 +130,15 @@ function drawWavePreview(s, p) {
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
     const baseX = s.x + dx * t, baseY = s.y + dy * t;
-    const waveOffset = Math.sin(t * freq * Math.PI * 2 + off) * amp;
+    const waveOffset = Math.sin(t * freq * TAU + off) * amp;
     const px = baseX + perpX * waveOffset, py = baseY + perpY * waveOffset;
     if (i === 0) pvCtx.moveTo(px, py); else pvCtx.lineTo(px, py);
   }
   pvCtx.stroke();
   pvCtx.setLineDash([4, 4]);
   pvCtx.strokeStyle = 'rgba(242,184,75,0.35)';
-  pvCtx.beginPath(); pvCtx.arc(s.x, s.y, state.arrowRadius, 0, Math.PI * 2); pvCtx.stroke();
-  if (len > 4) { pvCtx.beginPath(); pvCtx.arc(p.x, p.y, state.arrowRadius, 0, Math.PI * 2); pvCtx.stroke(); }
+  pvCtx.beginPath(); pvCtx.arc(s.x, s.y, state.constraintRadius, 0, TAU); pvCtx.stroke();
+  if (len > 4) { pvCtx.beginPath(); pvCtx.arc(p.x, p.y, state.constraintRadius, 0, TAU); pvCtx.stroke(); }
   pvCtx.setLineDash([]);
 }
 
@@ -148,38 +148,9 @@ function drawPenPreviewBezier() {
   if (state.penAnchors.length >= 2) {
     pvCtx.strokeStyle = 'rgba(242,184,75,0.9)';
     pvCtx.lineWidth = 2;
-    pvCtx.beginPath();
-    pvCtx.moveTo(state.penAnchors[0].x, state.penAnchors[0].y);
-    for (let i = 1; i < state.penAnchors.length; i++) {
-      const a = state.penAnchors[i - 1], b = state.penAnchors[i];
-      pvCtx.bezierCurveTo(a.h2x, a.h2y, b.h1x, b.h1y, b.x, b.y);
-    }
-    if (state.penClosed && state.penAnchors.length > 2) {
-      const a = state.penAnchors[state.penAnchors.length - 1], b = state.penAnchors[0];
-      pvCtx.bezierCurveTo(a.h2x, a.h2y, b.h1x, b.h1y, b.x, b.y);
-    }
-    pvCtx.stroke();
+    drawPenPath(pvCtx, state.penAnchors, state.penClosed);
   }
-  for (let i = 0; i < state.penAnchors.length; i++) {
-    const a = state.penAnchors[i];
-    if (a.h1x !== a.x || a.h1y !== a.y) {
-      pvCtx.strokeStyle = 'rgba(61,220,151,0.7)'; pvCtx.lineWidth = 1;
-      pvCtx.beginPath(); pvCtx.moveTo(a.x, a.y); pvCtx.lineTo(a.h1x, a.h1y); pvCtx.stroke();
-      pvCtx.beginPath(); pvCtx.arc(a.h1x, a.h1y, 3, 0, Math.PI * 2);
-      pvCtx.fillStyle = 'rgba(61,220,151,0.9)'; pvCtx.fill();
-    }
-    if (a.h2x !== a.x || a.h2y !== a.y) {
-      pvCtx.strokeStyle = 'rgba(61,220,151,0.7)'; pvCtx.lineWidth = 1;
-      pvCtx.beginPath(); pvCtx.moveTo(a.x, a.y); pvCtx.lineTo(a.h2x, a.h2y); pvCtx.stroke();
-      pvCtx.beginPath(); pvCtx.arc(a.h2x, a.h2y, 3, 0, Math.PI * 2);
-      pvCtx.fillStyle = 'rgba(61,220,151,0.9)'; pvCtx.fill();
-    }
-    pvCtx.fillStyle = i === 0 ? 'rgba(242,184,75,0.95)' : 'rgba(255,255,255,0.9)';
-    pvCtx.strokeStyle = '#1a1c22'; pvCtx.lineWidth = 1.5;
-    pvCtx.beginPath();
-    pvCtx.rect(a.x - 4, a.y - 4, 8, 8);
-    pvCtx.fill(); pvCtx.stroke();
-  }
+  drawPenHandles(pvCtx, state.penAnchors, { handleRadius: 3, anchorSize: 4 });
 }
 
 export function finishPenPath() {
@@ -376,7 +347,7 @@ previewCanvas.addEventListener('pointermove', e => {
       if (state.currentTool === 'brush' || state.currentTool === 'eraser') showHUD(e.clientX, e.clientY, 'size ' + state.brushSize + 'px');
       else if (state.currentTool === 'pen') showHUD(e.clientX, e.clientY, state.penAnchors.length > 0 ? `${state.penAnchors.length} anchors \u00B7 click to add` : 'Click to start path');
       else if (state.currentTool === 'fill') showHUD(e.clientX, e.clientY, 'Strength: ' + state.fillStrength.toFixed(2) + ' \u00B7 Tolerance: ' + state.fillTolerance + ' \u00B7 Click & drag');
-      else showHUD(e.clientX, e.clientY, 'radius ' + state.arrowRadius + 'px');
+      else showHUD(e.clientX, e.clientY, 'radius ' + state.constraintRadius + 'px');
     } else {
       const hit = hitTestConstraint(p.x, p.y);
       showHUD(e.clientX, e.clientY, hit ? 'Click to select \u00B7 Drag to move' : 'Click a constraint to select');
@@ -531,68 +502,43 @@ previewCanvas.addEventListener('pointerleave', () => {
   if (!state.dragging) { clearPreview(); hideHUD(); }
 });
 
+function adjustParam(e, key, min, max, step, scale, label, fmt, barFn) {
+  const v = Math.max(min, Math.min(max, state[key] + e.deltaY > 0 ? -step : step));
+  state[key] = v;
+  const el = document.getElementById(key);
+  const valEl = document.getElementById(key + 'Val');
+  if (el) el.value = scale ? v * scale : v;
+  if (valEl) valEl.textContent = fmt(v);
+  showHUD(e.clientX, e.clientY, label + ' ' + fmt(v), barFn ? barFn(v) : undefined);
+}
+
+const SCROLL_PARAMS = {
+  shift: {
+    fill:        { key: 'fillStrength',        min: 0.05, max: 1,   step: 0.02, scale: 100, label: 'strength', fmt: v => v.toFixed(2), bar: v => v },
+    brushLike:   { key: 'brushStrength',       min: 0.05, max: 1,   step: 0.02, scale: 100, label: 'strength', fmt: v => v.toFixed(2), bar: v => v },
+    constraint:  { key: 'constraintStrength',  min: 0.05, max: 1,   step: 0.02, scale: 100, label: 'strength', fmt: v => v.toFixed(2), bar: v => v },
+  },
+  ctrl: {
+    fill:        { key: 'fillTolerance',       min: 0,    max: 127, step: 1,    scale: 0,   label: 'tolerance', fmt: v => '' + v,       bar: v => v / 127 },
+    brushLike:   { key: 'brushFeather',        min: 0,    max: 1,   step: 0.02, scale: 100, label: 'feather',   fmt: v => v.toFixed(2), bar: v => v },
+    constraint:  { key: 'constraintFeather',   min: 0,    max: 1,   step: 0.02, scale: 100, label: 'feather',   fmt: v => v.toFixed(2), bar: v => v },
+  },
+  none: {
+    fill:        { key: 'fillTolerance',       min: 0,    max: 127, step: 1,    scale: 0,   label: 'tolerance', fmt: v => '' + v,       bar: v => v / 127, hover: true },
+    brushLike:   { key: 'brushSize',           min: 4,    max: 150, step: 2,    scale: 0,   label: 'size',      fmt: v => v + ' px',   hover: true },
+    constraint:  { key: 'constraintRadius',    min: 10,   max: 400, step: 5,    scale: 0,   label: 'radius',    fmt: v => v + ' px',   hover: true },
+  },
+};
+
 previewCanvas.addEventListener('wheel', e => {
   e.preventDefault();
   const t = state.currentTool;
-  const isConstraint = t === 'arrow' || t === 'circle' || t === 'swirl' || t === 'radial' || t === 'wave';
-  const isBrushLike = t === 'brush' || t === 'eraser' || t === 'pen';
-  const isFill = t === 'fill';
-  if (!isConstraint && !isBrushLike && !isFill) return;
-  const step = e.deltaY > 0 ? -1 : 1;
-  if (e.shiftKey) {
-    if (isFill) {
-      state.fillStrength = Math.max(0.05, Math.min(1, state.fillStrength + step * 0.02));
-      document.getElementById('fillStrength').value = state.fillStrength * 100;
-      document.getElementById('fillStrengthVal').textContent = state.fillStrength.toFixed(2);
-      showHUD(e.clientX, e.clientY, 'strength ' + state.fillStrength.toFixed(2), state.fillStrength);
-    } else if (isBrushLike) {
-      state.brushStrength = Math.max(0.05, Math.min(1, state.brushStrength + step * 0.02));
-      document.getElementById('brushStrength').value = state.brushStrength * 100;
-      document.getElementById('brushStrengthVal').textContent = state.brushStrength.toFixed(2);
-      showHUD(e.clientX, e.clientY, 'strength ' + state.brushStrength.toFixed(2), state.brushStrength);
-    } else {
-      state.arrowStrength = Math.max(0.05, Math.min(1, state.arrowStrength + step * 0.02));
-      document.getElementById('arrowStrength').value = state.arrowStrength * 100;
-      document.getElementById('arrowStrengthVal').textContent = state.arrowStrength.toFixed(2);
-      showHUD(e.clientX, e.clientY, 'strength ' + state.arrowStrength.toFixed(2), state.arrowStrength);
-    }
-  } else if (e.ctrlKey || e.metaKey) {
-    if (isFill) {
-      state.fillTolerance = Math.max(0, Math.min(127, state.fillTolerance + step));
-      document.getElementById('fillTolerance').value = state.fillTolerance;
-      document.getElementById('fillToleranceVal').textContent = state.fillTolerance;
-      showHUD(e.clientX, e.clientY, 'tolerance ' + state.fillTolerance, state.fillTolerance / 127);
-    } else if (isBrushLike) {
-      state.brushFeather = Math.max(0, Math.min(1, state.brushFeather + step * 0.02));
-      document.getElementById('brushFeather').value = state.brushFeather * 100;
-      document.getElementById('brushFeatherVal').textContent = state.brushFeather.toFixed(2);
-      showHUD(e.clientX, e.clientY, 'feather ' + state.brushFeather.toFixed(2), state.brushFeather);
-    } else {
-      state.arrowFeather = Math.max(0, Math.min(1, state.arrowFeather + step * 0.02));
-      document.getElementById('arrowFeather').value = state.arrowFeather * 100;
-      document.getElementById('arrowFeatherVal').textContent = state.arrowFeather.toFixed(2);
-      showHUD(e.clientX, e.clientY, 'feather ' + state.arrowFeather.toFixed(2), state.arrowFeather);
-    }
-  } else {
-    if (isFill) {
-      state.fillTolerance = Math.max(0, Math.min(127, state.fillTolerance + step));
-      document.getElementById('fillTolerance').value = state.fillTolerance;
-      document.getElementById('fillToleranceVal').textContent = state.fillTolerance;
-      showHUD(e.clientX, e.clientY, 'tolerance ' + state.fillTolerance, state.fillTolerance / 127);
-    } else if (isBrushLike) {
-      state.brushSize = Math.max(4, Math.min(150, state.brushSize + step * 2));
-      document.getElementById('brushSize').value = state.brushSize;
-      document.getElementById('brushSizeVal').textContent = state.brushSize + ' px';
-      drawHoverPreview(getPos(e));
-      showHUD(e.clientX, e.clientY, 'size ' + state.brushSize + 'px');
-    } else {
-      state.arrowRadius = Math.max(10, Math.min(400, state.arrowRadius + step * 5));
-      document.getElementById('arrowRadius').value = state.arrowRadius;
-      document.getElementById('arrowRadiusVal').textContent = state.arrowRadius + ' px';
-      drawHoverPreview(getPos(e));
-      showHUD(e.clientX, e.clientY, 'radius ' + state.arrowRadius + 'px');
-    }
-  }
+  const cat = t === 'fill' ? 'fill' : (t === 'brush' || t === 'eraser' || t === 'pen') ? 'brushLike' : 'constraint';
+  if (t !== 'fill' && cat !== 'brushLike' && cat !== 'constraint') return;
+  const mode = e.shiftKey ? 'shift' : (e.ctrlKey || e.metaKey) ? 'ctrl' : 'none';
+  const p = SCROLL_PARAMS[mode][cat];
+  adjustParam(e, p.key, p.min, p.max, p.step, p.scale, p.label, p.fmt, p.bar);
+  if (p.hover) drawHoverPreview(getPos(e));
 }, { passive: false });
 
 document.addEventListener('pointerup', e => {
@@ -615,7 +561,7 @@ document.addEventListener('pointerup', e => {
     state.layers.push({
       id: state.nextId++, type: 'constraint', name: 'Arrow', visible: true,
       shape: { type: 'arrow', x1: state.dragStart.x, y1: state.dragStart.y, x2: p.x, y2: p.y,
-        radius: state.arrowRadius, strength: state.arrowStrength, feather: state.arrowFeather },
+        radius: state.constraintRadius, strength: state.constraintStrength, feather: state.constraintFeather },
     });
     refreshLayerPanel();
     renderComposite();
@@ -628,7 +574,7 @@ document.addEventListener('pointerup', e => {
       state.layers.push({
         id: state.nextId++, type: 'constraint', name: names[state.currentTool], visible: true,
         shape: { type: state.currentTool, cx: state.dragStart.x, cy: state.dragStart.y, radius,
-          strength: state.arrowStrength, feather: state.arrowFeather, rotationDir: state.rotationDir,
+          strength: state.constraintStrength, feather: state.constraintFeather, rotationDir: state.rotationDir,
           spiralFactor: state.currentTool === 'swirl' ? state.spiralFactor : 0 },
       });
       refreshLayerPanel();
@@ -642,8 +588,8 @@ document.addEventListener('pointerup', e => {
       state.layers.push({
         id: state.nextId++, type: 'constraint', name: 'Wave', visible: true,
         shape: { type: 'wave', x1: state.dragStart.x, y1: state.dragStart.y, x2: p.x, y2: p.y,
-          radius: state.arrowRadius, strength: state.arrowStrength, feather: state.arrowFeather,
-          frequency: 1, amplitude: Math.round(state.arrowRadius * 0.3), offset: 0 },
+          radius: state.constraintRadius, strength: state.constraintStrength, feather: state.constraintFeather,
+          frequency: 1, amplitude: Math.round(state.constraintRadius * 0.3), offset: 0 },
       });
       refreshLayerPanel();
       renderComposite();

@@ -1,8 +1,10 @@
 import { state } from './state.js';
+import { TAU } from './canvas.js';
 import { samplePenPath } from './bezier.js';
 import { renderComposite } from './rendering.js';
 import { drawOverlay } from './overlay.js';
-import { setTool, pushUndo, toast } from './ui.js';
+import { pushUndo, toast } from './ui.js';
+import { setTool } from './tools.js';
 
 const layerListEl = document.getElementById('layerList');
 const layerPropsEl = document.getElementById('layerProps');
@@ -65,7 +67,7 @@ function generateLayerThumb(layer, w, h) {
     } else if (s.type === 'circle' || s.type === 'swirl' || s.type === 'radial') {
       ctx.strokeStyle = '#f2b84b'; ctx.lineWidth = 2 / sx;
       ctx.setLineDash([4 / sx, 3 / sx]);
-      ctx.beginPath(); ctx.arc(s.cx, s.cy, s.radius, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(s.cx, s.cy, s.radius, 0, TAU); ctx.stroke();
     }
     ctx.restore();
   } else if (layer.type === 'pen' && layer.anchors && layer.anchors.length >= 2) {

@@ -1,7 +1,8 @@
 import { state } from './state.js';
-import { clamp8, flowCtx } from './canvas.js';
+import { clamp8, flowCtx, TAU } from './canvas.js';
 import { samplePenPath } from './bezier.js';
 import { drawOverlay } from './overlay.js';
+import { debouncedSave } from './project.js';
 
 export function blendInto(target, x, y, targetR, targetG, amount) {
   if (x < 0 || x >= state.CW || y < 0 || y >= state.CH || amount <= 0) return;
@@ -93,7 +94,7 @@ export function renderConstraintTo(target, c) {
     for (let s = 0; s <= steps; s++) {
       const t = s / steps;
       const baseX = c.x1 + dx * t, baseY = c.y1 + dy * t;
-      const waveOffset = Math.sin(t * freq * Math.PI * 2 + off) * amp;
+      const waveOffset = Math.sin(t * freq * TAU + off) * amp;
       const px = baseX + perpX * waveOffset, py = baseY + perpY * waveOffset;
       stampInto(target, px, py, dirx, diry, stampR, c.strength, c.feather);
     }
@@ -126,36 +127,6 @@ export function renderPenStrokeTo(target, stroke) {
     const p = pts[i];
     stampInto(target, p.x, p.y, p.dirx, p.diry, stroke.radius, stroke.strength, stroke.feather);
   }
-}
-
-// ==================== LocalStorage ====================
-const STORAGE_KEY = 'flowmap-studio';
-let saveTimer = null;
-
-function uint8ToBase64(arr) {
-  let bin = '';
-  for (let i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]);
-  return btoa(bin);
-}
-
-export function serializeProject() {
-  return JSON.stringify({
-    CW: state.CW, CH: state.CH, invertX: state.invertX, invertY: state.invertY,
-    layers: state.layers.map(l => {
-      if (l.type === 'brush') return { ...l, data: uint8ToBase64(l.data) };
-      if (l.type === 'mask' && l.maskData) {
-        return { ...l,
-          maskData: { w: l.maskData.width, h: l.maskData.height, d: uint8ToBase64(l.maskData.data) },
-          rawMaskData: l.rawMaskData ? { w: l.rawMaskData.width, h: l.rawMaskData.height, d: uint8ToBase64(l.rawMaskData.data) } : null,
-        };
-      }
-      return JSON.parse(JSON.stringify(l));
-    }),
-  });
-}
-
-export function saveToStorage() {
-  try { localStorage.setItem(STORAGE_KEY, serializeProject()); } catch {}
 }
 
 export function floodFillBrush(target, startX, startY, dirx, diry, strength, tolerance) {
@@ -220,8 +191,7 @@ export function renderComposite() {
   }
   flowCtx.putImageData(state.flowImageData, 0, 0);
   drawOverlay();
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveToStorage, 300);
+  debouncedSave();
 }
 
 export function blurOnce() {
