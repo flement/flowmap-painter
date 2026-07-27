@@ -450,6 +450,7 @@ bindSlider('spiralFactor', 'spiralFactorVal', v => state.spiralFactor = v, v => 
 bindSlider('waveFrequency', 'waveFrequencyVal', v => state.waveFrequency = v, v => v.toFixed(2), 100);
 bindSlider('waveAmplitude', 'waveAmplitudeVal', v => state.waveAmplitude = v, v => v + ' px', 1);
 bindSlider('waveOffset', 'waveOffsetVal', v => state.waveOffset = v, v => v.toFixed(2), 100);
+bindSlider('fillStrength', 'fillStrengthVal', v => state.fillStrength = v, v => v.toFixed(2), 100);
 bindSlider('fillTolerance', 'fillToleranceVal', v => state.fillTolerance = v, v => v);
 
 

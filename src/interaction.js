@@ -375,7 +375,7 @@ previewCanvas.addEventListener('pointermove', e => {
     if (state.currentTool !== 'select') {
       if (state.currentTool === 'brush' || state.currentTool === 'eraser') showHUD(e.clientX, e.clientY, 'size ' + state.brushSize + 'px');
       else if (state.currentTool === 'pen') showHUD(e.clientX, e.clientY, state.penAnchors.length > 0 ? `${state.penAnchors.length} anchors \u00B7 click to add` : 'Click to start path');
-      else if (state.currentTool === 'fill') showHUD(e.clientX, e.clientY, 'Tolerance: ' + state.fillTolerance + ' \u00B7 Click & drag');
+      else if (state.currentTool === 'fill') showHUD(e.clientX, e.clientY, 'Strength: ' + state.fillStrength.toFixed(2) + ' \u00B7 Tolerance: ' + state.fillTolerance + ' \u00B7 Click & drag');
       else showHUD(e.clientX, e.clientY, 'radius ' + state.arrowRadius + 'px');
     } else {
       const hit = hitTestConstraint(p.x, p.y);
@@ -536,10 +536,16 @@ previewCanvas.addEventListener('wheel', e => {
   const t = state.currentTool;
   const isConstraint = t === 'arrow' || t === 'circle' || t === 'swirl' || t === 'radial' || t === 'wave';
   const isBrushLike = t === 'brush' || t === 'eraser' || t === 'pen';
-  if (!isConstraint && !isBrushLike) return;
+  const isFill = t === 'fill';
+  if (!isConstraint && !isBrushLike && !isFill) return;
   const step = e.deltaY > 0 ? -1 : 1;
   if (e.shiftKey) {
-    if (isBrushLike) {
+    if (isFill) {
+      state.fillStrength = Math.max(0.05, Math.min(1, state.fillStrength + step * 0.02));
+      document.getElementById('fillStrength').value = state.fillStrength * 100;
+      document.getElementById('fillStrengthVal').textContent = state.fillStrength.toFixed(2);
+      showHUD(e.clientX, e.clientY, 'strength ' + state.fillStrength.toFixed(2), state.fillStrength);
+    } else if (isBrushLike) {
       state.brushStrength = Math.max(0.05, Math.min(1, state.brushStrength + step * 0.02));
       document.getElementById('brushStrength').value = state.brushStrength * 100;
       document.getElementById('brushStrengthVal').textContent = state.brushStrength.toFixed(2);
@@ -551,7 +557,12 @@ previewCanvas.addEventListener('wheel', e => {
       showHUD(e.clientX, e.clientY, 'strength ' + state.arrowStrength.toFixed(2), state.arrowStrength);
     }
   } else if (e.ctrlKey || e.metaKey) {
-    if (isBrushLike) {
+    if (isFill) {
+      state.fillTolerance = Math.max(0, Math.min(127, state.fillTolerance + step));
+      document.getElementById('fillTolerance').value = state.fillTolerance;
+      document.getElementById('fillToleranceVal').textContent = state.fillTolerance;
+      showHUD(e.clientX, e.clientY, 'tolerance ' + state.fillTolerance, state.fillTolerance / 127);
+    } else if (isBrushLike) {
       state.brushFeather = Math.max(0, Math.min(1, state.brushFeather + step * 0.02));
       document.getElementById('brushFeather').value = state.brushFeather * 100;
       document.getElementById('brushFeatherVal').textContent = state.brushFeather.toFixed(2);
@@ -563,7 +574,12 @@ previewCanvas.addEventListener('wheel', e => {
       showHUD(e.clientX, e.clientY, 'feather ' + state.arrowFeather.toFixed(2), state.arrowFeather);
     }
   } else {
-    if (isBrushLike) {
+    if (isFill) {
+      state.fillTolerance = Math.max(0, Math.min(127, state.fillTolerance + step));
+      document.getElementById('fillTolerance').value = state.fillTolerance;
+      document.getElementById('fillToleranceVal').textContent = state.fillTolerance;
+      showHUD(e.clientX, e.clientY, 'tolerance ' + state.fillTolerance, state.fillTolerance / 127);
+    } else if (isBrushLike) {
       state.brushSize = Math.max(4, Math.min(150, state.brushSize + step * 2));
       document.getElementById('brushSize').value = state.brushSize;
       document.getElementById('brushSizeVal').textContent = state.brushSize + ' px';
@@ -640,7 +656,7 @@ document.addEventListener('pointerup', e => {
     const diry = len > 4 ? dy / len : -1;
     pushUndo();
     const layer = findActiveBrushLayer();
-    floodFillBrush(layer.data, state.dragStart.x, state.dragStart.y, dirx, diry, state.brushStrength, state.fillTolerance);
+    floodFillBrush(layer.data, state.dragStart.x, state.dragStart.y, dirx, diry, state.fillStrength, state.fillTolerance);
     renderComposite();
   } else if (state.currentTool === 'brush' || state.currentTool === 'eraser') {
     renderComposite();

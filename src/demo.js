@@ -107,16 +107,12 @@ export async function launchDemo() {
           vec2 flow = (flowDir.rg - 0.5) * 2.0;
           float flowMag = length(flow);
 
-          vec2 ambientDir = vec2(cos(uTime * 0.13), sin(uTime * 0.17));
-          float ambientStrength = 0.12 + flowMag * 0.08;
-          vec2 totalFlow = flow + ambientDir * ambientStrength;
-
           float phase0 = fract(uTime * uFlowSpeed);
           float phase1 = fract(uTime * uFlowSpeed + 0.5);
           float blend = abs(phase0 * 2.0 - 1.0);
 
-          vec2 scroll0 = totalFlow * phase0 * uFlowStrength;
-          vec2 scroll1 = totalFlow * phase1 * uFlowStrength;
+          vec2 scroll0 = flow * phase0 * uFlowStrength;
+          vec2 scroll1 = flow * phase1 * uFlowStrength;
           vec3 n0 = decodeNormal(texture2D(uWaterMap, uv - scroll0));
           vec3 n1 = decodeNormal(texture2D(uWaterMap, uv * 1.3 - scroll1));
           vec3 normal = normalize(mix(n0, n1, blend));
