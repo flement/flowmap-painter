@@ -589,7 +589,7 @@ document.addEventListener('pointerup', e => {
         id: state.nextId++, type: 'constraint', name: 'Wave', visible: true,
         shape: { type: 'wave', x1: state.dragStart.x, y1: state.dragStart.y, x2: p.x, y2: p.y,
           radius: state.constraintRadius, strength: state.constraintStrength, feather: state.constraintFeather,
-          frequency: 1, amplitude: Math.round(state.constraintRadius * 0.3), offset: 0 },
+          frequency: state.waveFrequency, amplitude: state.waveAmplitude, offset: state.waveOffset },
       });
       refreshLayerPanel();
       renderComposite();
