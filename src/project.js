@@ -17,11 +17,21 @@ function base64ToUint8(str) {
   return arr;
 }
 
+function isAllNeutral(data) {
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i] !== 128 || data[i + 1] !== 128) return false;
+  }
+  return true;
+}
+
 export function serializeProject() {
   return JSON.stringify({
     CW: state.CW, CH: state.CH, invertX: state.invertX, invertY: state.invertY,
     layers: state.layers.map(l => {
-      if (l.type === 'brush') return { ...l, data: uint8ToBase64(l.data) };
+      if (l.type === 'brush') {
+        if (isAllNeutral(l.data)) return { id: l.id, type: l.type, name: l.name, visible: l.visible, data: null };
+        return { ...l, data: uint8ToBase64(l.data) };
+      }
       if (l.type === 'mask' && l.maskData) {
         return { ...l,
           maskData: { w: l.maskData.width, h: l.maskData.height, d: uint8ToBase64(l.maskData.data) },
@@ -35,7 +45,7 @@ export function serializeProject() {
 
 let saveTimer = null;
 export function saveToStorage() {
-  try { localStorage.setItem(STORAGE_KEY, serializeProject()); } catch {}
+  try { localStorage.setItem(STORAGE_KEY, serializeProject()); } catch (e) { console.warn('Save failed:', e); }
 }
 
 export function debouncedSave() {
@@ -53,7 +63,7 @@ export function loadProject(json) {
     for (const l of data.layers) {
       if (l.type === 'brush') {
         const layer = makeBrushLayer();
-        layer.data.set(base64ToUint8(l.data));
+        if (l.data) layer.data.set(base64ToUint8(l.data));
         Object.assign(layer, { id: l.id, name: l.name, visible: l.visible });
         newLayers.push(layer);
       } else if (l.type === 'mask' && l.maskData) {

@@ -33,7 +33,8 @@ export function stampInto(target, cx, cy, dirx, diry, radius, strength, feather)
       const d2 = dx * dx + dy * dy;
       if (d2 > r2) continue;
       const d = Math.sqrt(d2);
-      const a = d <= edge0 ? strength : strength * (1 - (d - edge0) / denom);
+      const t = d <= edge0 ? 0 : (d - edge0) / denom;
+      const a = strength * (1 - t * t * (3 - 2 * t));
       blendInto(target, x, y, targetR, targetG, a);
     }
   }
@@ -133,18 +134,18 @@ export function floodFillBrush(target, startX, startY, dirx, diry, strength, tol
   const w = state.CW, h = state.CH;
   startX = Math.round(startX); startY = Math.round(startY);
   if (startX < 0 || startX >= w || startY < 0 || startY >= h) return;
-  const original = new Uint8Array(target);
+  const src = state.flowData || new Uint8Array(target);
   const visited = new Uint8Array(w * h);
   const [targetR, targetG] = dirToTarget(dirx, diry);
   const startIdx = (startY * w + startX) * 4;
-  const startR = original[startIdx], startG = original[startIdx + 1];
+  const startR = src[startIdx], startG = src[startIdx + 1];
   const stack = [startX, startY];
   while (stack.length > 0) {
     const y = stack.pop(), x = stack.pop();
     const key = y * w + x;
     if (visited[key]) continue;
     const i = key * 4;
-    if (Math.abs(original[i] - startR) > tolerance || Math.abs(original[i + 1] - startG) > tolerance) continue;
+    if (Math.abs(src[i] - startR) > tolerance || Math.abs(src[i + 1] - startG) > tolerance) continue;
     visited[key] = 1;
     blendInto(target, x, y, targetR, targetG, strength);
     if (x > 0) stack.push(x - 1, y);
@@ -164,11 +165,9 @@ export function renderComposite() {
     if (!layer.visible) continue;
     if (layer.type === 'brush') {
       for (let i = 0; i < state.flowData.length; i += 4) {
-        const dr = layer.data[i] - 128, dg = layer.data[i + 1] - 128;
-        if (dr !== 0 || dg !== 0) {
-          const amt = Math.max(Math.abs(dr), Math.abs(dg)) / 127;
-          state.flowData[i] = clamp8(128 + dr * amt + (state.flowData[i] - 128) * (1 - amt));
-          state.flowData[i + 1] = clamp8(128 + dg * amt + (state.flowData[i + 1] - 128) * (1 - amt));
+        if (layer.data[i] !== 128 || layer.data[i + 1] !== 128) {
+          state.flowData[i] = layer.data[i];
+          state.flowData[i + 1] = layer.data[i + 1];
         }
       }
     } else if (layer.type === 'pen') {

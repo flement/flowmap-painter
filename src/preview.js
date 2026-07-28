@@ -25,9 +25,27 @@ function drawHoverPreview(p) {
   clearPreview();
   pvCtx.lineWidth = 1.5;
   if (state.currentTool === 'brush' || state.currentTool === 'eraser') {
+    const r = state.brushSize;
+    const feather = state.brushFeather;
+    const strength = state.brushStrength;
+    if (state.currentTool === 'brush') {
+      pvCtx.fillStyle = 'rgba(242,184,75,' + (strength * 0.15).toFixed(2) + ')';
+      pvCtx.beginPath();
+      pvCtx.arc(p.x, p.y, r, 0, TAU);
+      pvCtx.fill();
+      if (feather > 0) {
+        const inner = r * (1 - feather);
+        pvCtx.strokeStyle = 'rgba(242,184,75,0.35)';
+        pvCtx.setLineDash([3, 4]);
+        pvCtx.beginPath();
+        pvCtx.arc(p.x, p.y, inner, 0, TAU);
+        pvCtx.stroke();
+        pvCtx.setLineDash([]);
+      }
+    }
     pvCtx.strokeStyle = state.currentTool === 'eraser' ? 'rgba(255,93,115,0.8)' : 'rgba(242,184,75,0.8)';
     pvCtx.beginPath();
-    pvCtx.arc(p.x, p.y, state.brushSize, 0, TAU);
+    pvCtx.arc(p.x, p.y, r, 0, TAU);
     pvCtx.stroke();
   } else if (state.currentTool === 'pen') {
     if (state.penAnchors.length > 0) drawPenPreviewBezier();
@@ -503,7 +521,7 @@ previewCanvas.addEventListener('pointerleave', () => {
 });
 
 function adjustParam(e, key, min, max, step, scale, label, fmt, barFn) {
-  const v = Math.max(min, Math.min(max, state[key] + e.deltaY > 0 ? -step : step));
+  const v = Math.max(min, Math.min(max, state[key] + (e.deltaY > 0 ? -step : step)));
   state[key] = v;
   const el = document.getElementById(key);
   const valEl = document.getElementById(key + 'Val');
@@ -515,12 +533,12 @@ function adjustParam(e, key, min, max, step, scale, label, fmt, barFn) {
 const SCROLL_PARAMS = {
   shift: {
     fill:        { key: 'fillStrength',        min: 0.05, max: 1,   step: 0.02, scale: 100, label: 'strength', fmt: v => v.toFixed(2), bar: v => v },
-    brushLike:   { key: 'brushStrength',       min: 0.05, max: 1,   step: 0.02, scale: 100, label: 'strength', fmt: v => v.toFixed(2), bar: v => v },
+    brushLike:   { key: 'brushStrength',       min: 0.05, max: 1,   step: 0.02, scale: 100, label: 'strength', fmt: v => v.toFixed(2), bar: v => v, hover: true },
     constraint:  { key: 'constraintStrength',  min: 0.05, max: 1,   step: 0.02, scale: 100, label: 'strength', fmt: v => v.toFixed(2), bar: v => v },
   },
   ctrl: {
     fill:        { key: 'fillTolerance',       min: 0,    max: 127, step: 1,    scale: 0,   label: 'tolerance', fmt: v => '' + v,       bar: v => v / 127 },
-    brushLike:   { key: 'brushFeather',        min: 0,    max: 1,   step: 0.02, scale: 100, label: 'feather',   fmt: v => v.toFixed(2), bar: v => v },
+    brushLike:   { key: 'brushFeather',        min: 0,    max: 1,   step: 0.02, scale: 100, label: 'feather',   fmt: v => v.toFixed(2), bar: v => v, hover: true },
     constraint:  { key: 'constraintFeather',   min: 0,    max: 1,   step: 0.02, scale: 100, label: 'feather',   fmt: v => v.toFixed(2), bar: v => v },
   },
   none: {

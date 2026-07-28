@@ -20,3 +20,4 @@ refreshLayerPanel();
 
 window.addEventListener('resize', () => { setStageSize(state.CW, state.CH); renderComposite(); });
 window.addEventListener('beforeunload', saveToStorage);
+window.addEventListener('pagehide', saveToStorage);
