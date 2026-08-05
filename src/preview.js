@@ -305,6 +305,7 @@ previewCanvas.addEventListener('pointerdown', e => {
   } else if (state.currentTool === 'brush' || state.currentTool === 'eraser') {
     pushUndo();
     state.brushPath = [{ x: p.x, y: p.y }];
+    state.smoothX = p.x; state.smoothY = p.y;
     const layer = findActiveBrushLayer();
     state.lastPaintPos = p;
     if (state.currentTool === 'eraser') {
@@ -427,7 +428,14 @@ previewCanvas.addEventListener('pointermove', e => {
     }
   } else if (state.currentTool === 'brush' || state.currentTool === 'eraser') {
     if (state.lastPaintPos) {
-      state.brushPath.push({ x: p.x, y: p.y });
+      if (state.currentTool === 'brush') {
+        const alpha = Math.max(1 - state.brushSmooth, 0.05);
+        state.smoothX += (p.x - state.smoothX) * alpha;
+        state.smoothY += (p.y - state.smoothY) * alpha;
+        state.brushPath.push({ x: state.smoothX, y: state.smoothY });
+      } else {
+        state.brushPath.push({ x: p.x, y: p.y });
+      }
       if (state.brushPath.length > 8) state.brushPath.shift();
       const n = state.brushPath.length;
       if (n >= 2) {

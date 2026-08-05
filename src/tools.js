@@ -5,6 +5,7 @@ import { finishPenPath, clearPreview } from './preview.js';
 
 const toolButtons = document.querySelectorAll('.tool-btn');
 const brushOptsEl = document.getElementById('brushOpts');
+const smoothPanelEl = document.getElementById('smoothPanel');
 const shapeOptsEl = document.getElementById('shapeOpts');
 const selectOptsEl = document.getElementById('selectOpts');
 const fillOptsEl = document.getElementById('fillOpts');
@@ -17,6 +18,7 @@ export function setTool(t) {
   toolButtons.forEach(b => b.classList.toggle('active', b.dataset.tool === t));
   const isBrushLike = (t === 'brush' || t === 'eraser' || t === 'pen');
   brushOptsEl.style.display = isBrushLike ? '' : 'none';
+  smoothPanelEl.style.display = t === 'brush' ? '' : 'none';
   fillOptsEl.style.display = t === 'fill' ? '' : 'none';
   shapeOptsEl.style.display = (t === 'arrow' || t === 'circle' || t === 'swirl' || t === 'radial' || t === 'wave') ? '' : 'none';
   selectOptsEl.style.display = t === 'select' ? '' : 'none';

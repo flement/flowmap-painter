@@ -218,6 +218,7 @@ function bindSlider(id, valId, setter, fmt, div) {
 bindSlider('brushSize', 'brushSizeVal', v => state.brushSize = v, v => v + ' px');
 bindSlider('brushStrength', 'brushStrengthVal', v => state.brushStrength = v, v => v.toFixed(2), 100);
 bindSlider('brushFeather', 'brushFeatherVal', v => state.brushFeather = v, v => v.toFixed(2), 100);
+bindSlider('brushSmooth', 'brushSmoothVal', v => state.brushSmooth = v, v => Math.round(v * 100) + '%', 100);
 bindSlider('constraintRadius', 'constraintRadiusVal', v => state.constraintRadius = v, v => v + ' px');
 bindSlider('constraintStrength', 'constraintStrengthVal', v => state.constraintStrength = v, v => v.toFixed(2), 100);
 bindSlider('constraintFeather', 'constraintFeatherVal', v => state.constraintFeather = v, v => v.toFixed(2), 100);
