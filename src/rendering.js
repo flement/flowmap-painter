@@ -124,9 +124,13 @@ export function renderPenStrokeTo(target, stroke) {
   if (stroke.anchors && stroke.anchors.length >= 2) {
     pts = samplePenPath(stroke.anchors, stroke.closed);
   }
+  const spacing = Math.max(4, stroke.radius * 0.5);
+  let lastX = null, lastY = null;
   for (let i = 0; i < pts.length; i++) {
     const p = pts[i];
+    if (lastX !== null && (p.x - lastX) * (p.x - lastX) + (p.y - lastY) * (p.y - lastY) < spacing * spacing) continue;
     stampInto(target, p.x, p.y, p.dirx, p.diry, stroke.radius, stroke.strength, stroke.feather);
+    lastX = p.x; lastY = p.y;
   }
 }
 
