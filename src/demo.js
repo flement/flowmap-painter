@@ -9,6 +9,7 @@ export async function launchDemo() {
   const canvas = document.getElementById('demoCanvas');
   const closeBtn = document.getElementById('demoClose');
   const restartBtn = document.getElementById('demoRestart');
+  const idleToggle = document.getElementById('demoIdle');
 
   try {
     const THREE = await import('three');
@@ -47,6 +48,7 @@ export async function launchDemo() {
         uRefMap: { value: refTexture },
         uHasRef: { value: 1.0 },
         uTime: { value: 0 },
+        uIdleAnimate: { value: idleToggle.checked ? 1.0 : 0.0 },
         uFlowStrength: { value: 0.08 },
         uFlowSpeed: { value: 0.3 },
         uRefractStrength: { value: 0.015 },
@@ -71,6 +73,7 @@ export async function launchDemo() {
         uniform sampler2D uRefMap;
         uniform float uHasRef;
         uniform float uTime;
+        uniform float uIdleAnimate;
         uniform float uFlowStrength;
         uniform float uFlowSpeed;
         uniform float uRefractStrength;
@@ -107,15 +110,17 @@ export async function launchDemo() {
           vec2 flow = (flowDir.rg - 0.5) * 2.0;
           float flowMag = length(flow);
 
-          float phase0 = fract(uTime * uFlowSpeed);
-          float phase1 = fract(uTime * uFlowSpeed + 0.5);
+          float animOn = mix(uIdleAnimate, 1.0, smoothstep(0.001, 0.02, flowMag));
+          float t = uTime * animOn;
+          float phase0 = fract(t * uFlowSpeed);
+          float phase1 = fract(t * uFlowSpeed + 0.5);
           float blend = abs(phase0 * 2.0 - 1.0);
 
           vec2 scroll0 = flow * phase0 * uFlowStrength;
           vec2 scroll1 = flow * phase1 * uFlowStrength;
           vec3 n0 = decodeNormal(texture2D(uWaterMap, uv - scroll0));
           vec3 n1 = decodeNormal(texture2D(uWaterMap, uv * 1.3 - scroll1));
-          vec3 normal = normalize(mix(n0, n1, blend));
+          vec3 normal = normalize(mix(vec3(0.0, 0.0, 1.0), mix(n0, n1, blend), animOn));
 
           vec3 viewDir = vec3(0.0, 0.0, 1.0);
           float fresnel = pow(1.0 - max(dot(viewDir, normal), 0.0), uFresnelPower);
@@ -134,9 +139,9 @@ export async function launchDemo() {
             vec3 surface = mix(waterColor * 0.5, waterColor, fresnel);
             waterColor = mix(bg, surface, fresnel * 0.7 + 0.25);
           } else {
-            float depth = noise(uv * 6.0 + uTime * 0.05);
+            float depth = noise(uv * 6.0 + t * 0.05);
             vec3 floorColor = mix(uColorDeep, uColorShallow, depth * 0.5 + 0.5);
-            floorColor += vec3(0.03) * noise(uv * 20.0 - uTime * 0.1);
+            floorColor += vec3(0.03) * noise(uv * 20.0 - t * 0.1);
             waterColor = mix(floorColor, waterColor, fresnel * 0.4 + 0.25);
           }
 
@@ -168,6 +173,7 @@ export async function launchDemo() {
     }
 
     closeBtn.onclick = () => { modal.style.display = 'none'; cleanup(); };
+    idleToggle.onchange = () => { material.uniforms.uIdleAnimate.value = idleToggle.checked ? 1.0 : 0.0; };
     restartBtn.onclick = () => {
       cleanup();
       startTime = performance.now();

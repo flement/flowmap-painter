@@ -18,7 +18,7 @@ export function makeBrushLayer() {
 }
 
 export function makeMaskLayer(maskImageData) {
-  return { id: state.nextId++, type: 'mask', name: 'Mask', visible: true, maskData: maskImageData, rawMaskData: null, invert: false, threshold: 0 };
+  return { id: state.nextId++, type: 'mask', name: 'Mask', visible: true, maskData: maskImageData, rawMaskData: null, invert: false, threshold: 0, coastEnabled: false, coastSide: 'inside', coastWidth: 20, coastStrength: 0.8 };
 }
 
 function reprocessMask(layer) {
@@ -323,6 +323,47 @@ export function updateLayerProps(layer) {
         input.click();
       });
       layerPropsEl.appendChild(replaceBtn);
+
+      const coastRow = document.createElement('label');
+      coastRow.className = 'checkbox-row';
+      const coastCb = document.createElement('input');
+      coastCb.type = 'checkbox';
+      coastCb.checked = !!layer.coastEnabled;
+      coastCb.addEventListener('change', () => { layer.coastEnabled = coastCb.checked; renderComposite(); });
+      coastRow.appendChild(coastCb);
+      coastRow.appendChild(document.createTextNode(' Coastal foam'));
+      layerPropsEl.appendChild(coastRow);
+
+      const sideField = document.createElement('div');
+      sideField.className = 'field';
+      const sideRow = document.createElement('div');
+      sideRow.className = 'field-row';
+      const sideLabel = document.createElement('span');
+      sideLabel.className = 'field-label';
+      sideLabel.textContent = 'Side';
+      sideRow.appendChild(sideLabel);
+      sideField.appendChild(sideRow);
+      const sideSeg = document.createElement('div');
+      sideSeg.className = 'seg';
+      const mkSide = val => {
+        const b = document.createElement('button');
+        b.textContent = val[0].toUpperCase() + val.slice(1);
+        b.className = layer.coastSide === val ? 'active' : '';
+        b.addEventListener('click', () => {
+          layer.coastSide = val;
+          sideSeg.querySelectorAll('button').forEach(x => x.classList.remove('active'));
+          b.classList.add('active');
+          renderComposite();
+        });
+        sideSeg.appendChild(b);
+      };
+      mkSide('inside');
+      mkSide('outside');
+      sideField.appendChild(sideSeg);
+      layerPropsEl.appendChild(sideField);
+
+      addSlider('Width', layer.coastWidth, 1, 100, 1, v => { layer.coastWidth = v; });
+      addSlider('Strength', layer.coastStrength, 0, 1, 0.01, v => { layer.coastStrength = v; });
     }
   }
 }

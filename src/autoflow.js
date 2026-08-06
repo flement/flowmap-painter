@@ -1,3 +1,11 @@
+// ============================================================
+// AUTO-FLOW FROM IMAGE — DISABLED
+// To restore: uncomment the body below, then uncomment the
+// `import { initAutoflow, updateWaterPreview } from './autoflow.js';`
+// and `initAutoflow();` in ui.js, and the auto-flow section in
+// index.html (Reference panel).
+// ============================================================
+/*
 import { state } from './state.js';
 import { imgCanvas, imgCtx, clamp8 } from './canvas.js';
 import { blurOnce, renderComposite } from './rendering.js';
@@ -156,3 +164,4 @@ export function initAutoflow() {
     toast('Flow map generated from image');
   });
 }
+*/

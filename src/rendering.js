@@ -159,6 +159,66 @@ export function floodFillBrush(target, startX, startY, dirx, diry, strength, tol
   }
 }
 
+export function renderCoastFoam(layer) {
+  const md = layer.maskData;
+  const W = md.width, H = md.height;
+  const mdata = md.data;
+  const bin = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) bin[i] = mdata[i * 4] > 0 ? 1 : 0;
+  const dist = new Float32Array(W * H);
+  const INF = 1e6;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      const v = bin[i];
+      const edge = (x > 0 && bin[i - 1] !== v) || (x < W - 1 && bin[i + 1] !== v)
+                || (y > 0 && bin[i - W] !== v) || (y < H - 1 && bin[i + W] !== v);
+      dist[i] = edge ? 0 : INF;
+    }
+  }
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      let d = dist[i];
+      if (x > 0 && dist[i - 1] + 1 < d) d = dist[i - 1] + 1;
+      if (y > 0 && dist[i - W] + 1 < d) d = dist[i - W] + 1;
+      if (x > 0 && y > 0 && dist[i - W - 1] + 1.4142 < d) d = dist[i - W - 1] + 1.4142;
+      if (x < W - 1 && y > 0 && dist[i - W + 1] + 1.4142 < d) d = dist[i - W + 1] + 1.4142;
+      dist[i] = d;
+    }
+  }
+  for (let y = H - 1; y >= 0; y--) {
+    for (let x = W - 1; x >= 0; x--) {
+      const i = y * W + x;
+      let d = dist[i];
+      if (x < W - 1 && dist[i + 1] + 1 < d) d = dist[i + 1] + 1;
+      if (y < H - 1 && dist[i + W] + 1 < d) d = dist[i + W] + 1;
+      if (x < W - 1 && y < H - 1 && dist[i + W + 1] + 1.4142 < d) d = dist[i + W + 1] + 1.4142;
+      if (x > 0 && y < H - 1 && dist[i + W - 1] + 1.4142 < d) d = dist[i + W - 1] + 1.4142;
+      dist[i] = d;
+    }
+  }
+  const N = layer.coastWidth;
+  const strength = layer.coastStrength == null ? 0.8 : layer.coastStrength;
+  for (let y = 0; y < state.CH; y++) {
+    for (let x = 0; x < state.CW; x++) {
+      const mx = Math.floor(x * W / state.CW), my = Math.floor(y * H / state.CH);
+      const mi = my * W + mx;
+      const inside = bin[mi];
+      if (layer.coastSide === 'outside' ? inside : !inside) continue;
+      const d = dist[mi];
+      if (d <= 0 || d > N) continue;
+      const xm = mx > 0 ? mi - 1 : mi + 1, xp = mx < W - 1 ? mi + 1 : mi - 1;
+      const ym = my > 0 ? mi - W : mi + W, yp = my < H - 1 ? mi + W : mi - W;
+      const gx = dist[xp] - dist[xm], gy = dist[yp] - dist[ym];
+      const len = Math.hypot(gx, gy) || 1;
+      const [tr, tg] = dirToTarget(gx / len, gy / len);
+      const amt = mdata[mi * 4] / 255;
+      blendInto(state.flowData, x, y, tr, tg, strength * (N - d + 1) / N * amt);
+    }
+  }
+}
+
 export function renderComposite() {
   state.flowImageData = flowCtx.createImageData(state.CW, state.CH);
   state.flowData = state.flowImageData.data;
@@ -190,6 +250,7 @@ export function renderComposite() {
           state.flowData[fi + 1] = clamp8(128 + (state.flowData[fi + 1] - 128) * amt);
         }
       }
+      if (layer.coastEnabled && layer.coastWidth > 0) renderCoastFoam(layer);
     }
   }
   flowCtx.putImageData(state.flowImageData, 0, 0);

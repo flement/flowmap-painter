@@ -4,7 +4,7 @@ import { renderComposite, blurOnce } from './rendering.js';
 import { makeBrushLayer, makeMaskLayer, refreshLayerPanel, hideLayerProps, selectLayer } from './layers.js';
 import { setTool } from './tools.js';
 import { serializeProject, loadProject } from './project.js';
-import { initAutoflow, updateWaterPreview } from './autoflow.js';
+// import { initAutoflow, updateWaterPreview } from './autoflow.js'; // disabled
 import { finishPenPath, clearPreview } from './preview.js';
 import { launchDemo } from './demo.js';
 
@@ -69,7 +69,7 @@ function undo() {
       const imgData = new ImageData(new Uint8ClampedArray(md.data), md.width, md.height);
       const rawMd = l.rawMaskData;
       const rawImgData = rawMd ? new ImageData(new Uint8ClampedArray(rawMd.data), rawMd.width, rawMd.height) : null;
-      state.layers.push({ id: l.id, type: 'mask', name: l.name, visible: l.visible, maskData: imgData, rawMaskData: rawImgData, invert: l.invert, threshold: l.threshold });
+      state.layers.push({ ...l, maskData: imgData, rawMaskData: rawImgData });
     } else {
       state.layers.push(JSON.parse(JSON.stringify(l)));
     }
@@ -176,12 +176,12 @@ imgFileInput.addEventListener('change', e => {
       }
       imgCtx.clearRect(0, 0, w, h);
       imgCtx.drawImage(image, 0, 0, w, h);
-      document.getElementById('autoGenBtn').disabled = false;
-      document.getElementById('waterOpts').style.display = '';
+      // document.getElementById('autoGenBtn').disabled = false; // disabled
+      // document.getElementById('waterOpts').style.display = ''; // disabled
       opacity.value = 80;
       flowCanvas.style.opacity = 0.8;
       opacityVal.textContent = '80%';
-      updateWaterPreview();
+      // updateWaterPreview(); // disabled
       renderComposite();
       toast('Image loaded');
     };
@@ -190,8 +190,8 @@ imgFileInput.addEventListener('change', e => {
   reader.readAsDataURL(file);
 });
 
-// ==================== Auto-flow ====================
-initAutoflow();
+// ==================== Auto-flow (disabled) ====================
+// initAutoflow();
 
 // ==================== Opacity Slider ====================
 const opacity = document.getElementById('opacity');
