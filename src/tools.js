@@ -12,6 +12,13 @@ const fillOptsEl = document.getElementById('fillOpts');
 const rotationDirPanelEl = document.getElementById('rotationDirPanel');
 const spiralPanelEl = document.getElementById('spiralPanel');
 
+export function updateSwirlOpts() {
+  const showEye = state.currentTool === 'swirl' && state.cyclone;
+  for (const id of ['cycloneEyePanel', 'cycloneSoftPanel', 'cycloneEyewallPanel', 'cycloneDecayPanel', 'cycloneBandsPanel', 'cycloneBandAmpPanel']) {
+    document.getElementById(id).style.display = showEye ? '' : 'none';
+  }
+}
+
 export function setTool(t) {
   if (state.currentTool === 'pen' && t !== 'pen' && state.penAnchors.length > 0) finishPenPath();
   state.currentTool = t;
@@ -27,6 +34,8 @@ export function setTool(t) {
   document.getElementById('layerProps').style.display = 'none';
   rotationDirPanelEl.style.display = (t === 'circle' || t === 'swirl' || t === 'radial') ? '' : 'none';
   spiralPanelEl.style.display = t === 'swirl' ? '' : 'none';
+  document.getElementById('cyclonePanel').style.display = t === 'swirl' ? '' : 'none';
+  updateSwirlOpts();
   const isWave = t === 'wave';
   document.getElementById('wavePanel').style.display = isWave ? '' : 'none';
   document.getElementById('waveAmpPanel').style.display = isWave ? '' : 'none';

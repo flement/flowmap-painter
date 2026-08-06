@@ -658,7 +658,14 @@ document.addEventListener('pointerup', e => {
         id: state.nextId++, type: 'constraint', name: names[state.currentTool], visible: true,
         shape: { type: state.currentTool, cx: state.dragStart.x, cy: state.dragStart.y, radius,
           strength: state.constraintStrength, feather: state.constraintFeather, rotationDir: state.rotationDir,
-          spiralFactor: state.currentTool === 'swirl' ? state.spiralFactor : 0 },
+          spiralFactor: state.currentTool === 'swirl' ? state.spiralFactor : 0,
+          cyclone: state.currentTool === 'swirl' ? state.cyclone : false,
+          cycloneEye: state.currentTool === 'swirl' ? state.cycloneEye : 0,
+          cycloneEyeSoft: state.currentTool === 'swirl' ? state.cycloneEyeSoft : 0,
+          cycloneEyewall: state.currentTool === 'swirl' ? state.cycloneEyewall : 0,
+          cycloneDecay: state.currentTool === 'swirl' ? state.cycloneDecay : 0,
+          cycloneBands: state.currentTool === 'swirl' ? state.cycloneBands : 0,
+          cycloneBandAmp: state.currentTool === 'swirl' ? state.cycloneBandAmp : 0 },
       });
       refreshLayerPanel();
       renderComposite();

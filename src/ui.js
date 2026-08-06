@@ -2,7 +2,7 @@ import { state } from './state.js';
 import { flowCanvas, imgCtx, setStageSize, TAU } from './canvas.js';
 import { renderComposite, blurOnce } from './rendering.js';
 import { makeBrushLayer, makeMaskLayer, refreshLayerPanel, hideLayerProps, selectLayer } from './layers.js';
-import { setTool } from './tools.js';
+import { setTool, updateSwirlOpts } from './tools.js';
 import { serializeProject, loadProject } from './project.js';
 // import { initAutoflow, updateWaterPreview } from './autoflow.js'; // disabled
 import { finishPenPath, clearPreview, fixedBrushDir } from './preview.js';
@@ -253,6 +253,12 @@ bindSlider('constraintRadius', 'constraintRadiusVal', v => state.constraintRadiu
 bindSlider('constraintStrength', 'constraintStrengthVal', v => state.constraintStrength = v, v => v.toFixed(2), 100);
 bindSlider('constraintFeather', 'constraintFeatherVal', v => state.constraintFeather = v, v => v.toFixed(2), 100);
 bindSlider('spiralFactor', 'spiralFactorVal', v => state.spiralFactor = v, v => (v >= 0 ? '+' : '') + v.toFixed(2), 100);
+bindSlider('cycloneEye', 'cycloneEyeVal', v => state.cycloneEye = v, v => Math.round(v * 100) + '%', 100);
+bindSlider('cycloneEyeSoft', 'cycloneEyeSoftVal', v => state.cycloneEyeSoft = v, v => v.toFixed(2), 100);
+bindSlider('cycloneEyewall', 'cycloneEyewallVal', v => state.cycloneEyewall = v, v => Math.round(v * 100) + '%', 100);
+bindSlider('cycloneDecay', 'cycloneDecayVal', v => state.cycloneDecay = v, v => v.toFixed(2), 100);
+bindSlider('cycloneBands', 'cycloneBandsVal', v => state.cycloneBands = v, v => '' + Math.round(v), 1);
+bindSlider('cycloneBandAmp', 'cycloneBandAmpVal', v => state.cycloneBandAmp = v, v => v.toFixed(2), 100);
 bindSlider('waveFrequency', 'waveFrequencyVal', v => state.waveFrequency = v, v => v.toFixed(2), 100);
 bindSlider('waveAmplitude', 'waveAmplitudeVal', v => state.waveAmplitude = v, v => v + ' px', 1);
 bindSlider('waveOffset', 'waveOffsetVal', v => state.waveOffset = v, v => v.toFixed(2), 100);
@@ -261,6 +267,11 @@ bindSlider('fillTolerance', 'fillToleranceVal', v => state.fillTolerance = v, v 
 
 document.getElementById('invertX').addEventListener('change', e => { state.invertX = e.target.checked; renderComposite(); drawFixedDirPreview(); });
 document.getElementById('invertY').addEventListener('change', e => { state.invertY = e.target.checked; renderComposite(); drawFixedDirPreview(); });
+
+document.getElementById('cycloneToggle').addEventListener('change', e => {
+  state.cyclone = e.target.checked;
+  updateSwirlOpts();
+});
 
 document.getElementById('brushFixed').addEventListener('change', e => {
   state.brushFixed = e.target.checked;

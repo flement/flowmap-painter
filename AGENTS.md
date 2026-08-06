@@ -126,7 +126,7 @@ All layers live in `state.layers` (bottom-to-top order). Each has `{ id, type, n
 
 - **arrow**: `{ x1,y1, x2,y2, radius, strength, feather }` — stamps along line from p1→p2
 - **circle**: `{ cx,cy, radius, strength, feather, rotationDir }` — stamps tangential vectors (CW/CCW)
-- **swirl**: same as circle + `{ spiralFactor }` — mixes tangential + radial vectors
+- **swirl**: same as circle + `{ spiralFactor, cyclone, cycloneEye, cycloneEyeSoft, cycloneEyewall, cycloneDecay, cycloneBands, cycloneBandAmp }` — when `cyclone` is on, uses a modified-Rankine cyclone profile: calm eye (`cycloneEye` × radius) rising to a wind maximum at the eyewall (`cycloneEyewall` × radius, peak broadness set by `cycloneEyeSoft`), power-law decay beyond (`cycloneDecay` exponent), optional spiral rainbands (`cycloneBands` count, `cycloneBandAmp` intensity), plus inflow that grows with radius so the spiral tightens toward the core; when off, falls back to the uniform spiral
 - **radial**: `{ cx,cy, radius, strength, feather, rotationDir }` — stamps outward/inward from center
 - **wave**: `{ x1,y1, x2,y2, radius, strength, feather, frequency, amplitude, offset }` — sinusoidal wave path with perpendicular displacement
 
@@ -201,7 +201,7 @@ The brush tool uses Catmull-Rom spline interpolation for smooth curves. Points a
 
 ### Public API (key exports by module)
 
-**state.js**: `state` — the shared state object (includes `brushPath`, `fillTolerance`, `waveFrequency`, `waveAmplitude`, `waveOffset`, `rotationDir`, `spiralFactor`)
+**state.js**: `state` — the shared state object (includes `brushPath`, `fillTolerance`, `waveFrequency`, `waveAmplitude`, `waveOffset`, `rotationDir`, `spiralFactor`, `cyclone`, `cycloneEye`, `cycloneEyeSoft`, `cycloneEyewall`, `cycloneDecay`, `cycloneBands`, `cycloneBandAmp`)
 
 **bezier.js**: `cubicBezier(t, p0, p1, p2, p3)`, `sampleBezierSeg(a, b, count)`, `samplePenPath(anchors, closed)`, `hitPenAnchor(px, py, anchors, threshold)`, `insertPenAnchor(anchors, px, py)`, `drawPenPath(ctx, anchors, closed)`, `drawPenHandles(ctx, anchors, opts)`
 

@@ -200,7 +200,7 @@ export function updateLayerProps(layer) {
   title.addEventListener('click', () => layerPropsEl.classList.toggle('collapsed'));
   layerPropsEl.appendChild(title);
 
-  function addSlider(label, value, min, max, step, onChange) {
+  function addSlider(label, value, min, max, step, onChange, fmt) {
     const field = document.createElement('div');
     field.className = 'field';
     const row = document.createElement('div');
@@ -210,7 +210,7 @@ export function updateLayerProps(layer) {
     lbl.textContent = label;
     const val = document.createElement('span');
     val.className = 'field-value';
-    val.textContent = typeof value === 'number' && !Number.isInteger(value) ? value.toFixed(2) : value;
+    val.textContent = fmt ? fmt(value) : (typeof value === 'number' && !Number.isInteger(value) ? value.toFixed(2) : value);
     row.appendChild(lbl);
     row.appendChild(val);
     const input = document.createElement('input');
@@ -221,7 +221,7 @@ export function updateLayerProps(layer) {
     if (step) input.step = step;
     input.addEventListener('input', () => {
       const v = parseFloat(input.value);
-      val.textContent = step && step < 1 ? v.toFixed(2) : v;
+      val.textContent = fmt ? fmt(v) : (step && step < 1 ? v.toFixed(2) : v);
       onChange(v);
       renderComposite();
       refreshLayerPanel();
@@ -274,6 +274,21 @@ export function updateLayerProps(layer) {
     }
     if (s.type === 'swirl') {
       addSlider('Spiral', s.spiralFactor, -1, 1, 0.01, v => { s.spiralFactor = v; });
+      const cycRow = document.createElement('label');
+      cycRow.className = 'checkbox-row';
+      const cycCb = document.createElement('input');
+      cycCb.type = 'checkbox';
+      cycCb.checked = s.cyclone !== false;
+      cycCb.addEventListener('change', () => { s.cyclone = cycCb.checked; renderComposite(); });
+      cycRow.appendChild(cycCb);
+      cycRow.appendChild(document.createTextNode(' Cyclone profile'));
+      layerPropsEl.appendChild(cycRow);
+      addSlider('Eye size', s.cycloneEye ?? 0.12, 0, 0.5, 0.01, v => { s.cycloneEye = v; }, v => Math.round(v * 100) + '%');
+      addSlider('Eye softness', s.cycloneEyeSoft ?? 0.5, 0, 1, 0.01, v => { s.cycloneEyeSoft = v; });
+      addSlider('Eyewall', s.cycloneEyewall ?? 0.25, 0.12, 0.5, 0.01, v => { s.cycloneEyewall = v; }, v => Math.round(v * 100) + '%');
+      addSlider('Decay', s.cycloneDecay ?? 0.6, 0.3, 1.5, 0.05, v => { s.cycloneDecay = v; });
+      addSlider('Rainbands', s.cycloneBands ?? 0, 0, 8, 1, v => { s.cycloneBands = v; });
+      addSlider('Band strength', s.cycloneBandAmp ?? 0.3, 0, 0.8, 0.01, v => { s.cycloneBandAmp = v; });
     }
     if (s.type === 'wave') {
       addSlider('Frequency', s.frequency, 0.25, 8, 0.25, v => { s.frequency = v; });

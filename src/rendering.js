@@ -104,15 +104,50 @@ export function renderConstraintTo(target, c) {
     const denom = Math.max(1, c.radius - edge0);
     const minX = Math.max(0, Math.floor(c.cx - c.radius)), maxX = Math.min(state.CW - 1, Math.ceil(c.cx + c.radius));
     const minY = Math.max(0, Math.floor(c.cy - c.radius)), maxY = Math.min(state.CH - 1, Math.ceil(c.cy + c.radius));
-    const spiral = c.type === 'swirl' ? c.spiralFactor : 0;
+    const isSwirl = c.type === 'swirl';
+    const spiral = isSwirl ? c.spiralFactor : 0;
+    const cyclone = isSwirl && c.cyclone !== false;
+    const eye = cyclone ? c.radius * (c.cycloneEye ?? 0.12) : 0;
+    const soft = cyclone ? Math.max(0, Math.min(1, c.cycloneEyeSoft ?? 0.5)) : 0;
+    const rMax = cyclone ? c.radius * Math.max(c.cycloneEyewall ?? 0.25, c.cycloneEye ?? 0.12) : 0;
+    const decay = cyclone ? (c.cycloneDecay ?? 0.6) : 0;
+    const bands = cyclone ? (c.cycloneBands ?? 0) : 0;
+    const bandAmp = cyclone ? (c.cycloneBandAmp ?? 0.3) : 0;
+    const riseSpan = rMax - eye;
     for (let y = minY; y <= maxY; y++) {
       for (let x = minX; x <= maxX; x++) {
         const dx = x - c.cx, dy = y - c.cy;
         const d = Math.sqrt(dx * dx + dy * dy);
         if (d > c.radius || d < 0.75) continue;
-        const [vx, vy] = rotationalVector(dx, dy, d, c.rotationDir, spiral);
+        let a;
+        if (cyclone) {
+          if (d < eye) {
+            const t = d / eye;
+            const calm = 1 - t * t * (3 - 2 * t);
+            blendInto(target, x, y, 128, 128, c.strength * calm);
+            continue;
+          }
+          let t;
+          if (d < rMax) {
+            const u = riseSpan > 0 ? Math.min(1, (d - eye) / riseSpan) : 1;
+            t = Math.pow(u, soft * 2);
+          } else {
+            t = Math.pow(rMax / Math.max(rMax, d), decay);
+          }
+          if (d > edge0) {
+            const tt = (d - edge0) / denom;
+            t *= 1 - tt * tt * (3 - 2 * tt);
+          }
+          if (bands > 0 && bandAmp > 0) {
+            const mod = 1 + bandAmp * Math.sin(Math.atan2(dy, dx) - (d / c.radius) * bands * TAU);
+            t *= mod > 0 ? mod : 0;
+          }
+          a = c.strength * t;
+        } else {
+          a = d <= edge0 ? c.strength : c.strength * (1 - (d - edge0) / denom);
+        }
+        const [vx, vy] = rotationalVector(dx, dy, d, c.rotationDir, cyclone ? spiral * (d / c.radius) : spiral);
         const [targetR, targetG] = dirToTarget(vx, vy);
-        const a = d <= edge0 ? c.strength : c.strength * (1 - (d - edge0) / denom);
         blendInto(target, x, y, targetR, targetG, a);
       }
     }

@@ -134,7 +134,7 @@ Key functions: `dirToTarget(dirx, diry)` → `[R, G]`, `blendInto()` → writes 
   shape: {
     type: 'arrow',   x1, y1, x2, y2, radius, strength, feather
     type: 'circle',  cx, cy, radius, strength, feather, rotationDir
-    type: 'swirl',   cx, cy, radius, strength, feather, rotationDir, spiralFactor
+    type: 'swirl',   cx, cy, radius, strength, feather, rotationDir, spiralFactor, cyclone, cycloneEye, cycloneEyeSoft, cycloneEyewall, cycloneDecay, cycloneBands, cycloneBandAmp
     type: 'radial',  cx, cy, radius, strength, feather, rotationDir
     type: 'wave',    x1, y1, x2, y2, radius, strength, feather, frequency, amplitude, offset
   }}
