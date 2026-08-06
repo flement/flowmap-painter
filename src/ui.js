@@ -47,7 +47,7 @@ export function pushUndo() {
   state.undoStack.push({
     layers: state.layers.map(l => {
       if (l.type === 'brush') return { ...l, data: l.data.slice() };
-      if (l.type === 'mask' && l.maskData) return { ...l, maskData: { width: l.maskData.width, height: l.maskData.height, data: Array.from(l.maskData.data) }, rawMaskData: l.rawMaskData ? { width: l.rawMaskData.width, height: l.rawMaskData.height, data: Array.from(l.rawMaskData.data) } : null };
+      if (l.type === 'mask' && l.maskData) return { ...l, maskData: { width: l.maskData.width, height: l.maskData.height, data: l.maskData.data.slice() }, rawMaskData: l.rawMaskData ? { width: l.rawMaskData.width, height: l.rawMaskData.height, data: l.rawMaskData.data.slice() } : null };
       return JSON.parse(JSON.stringify(l));
     }),
   });
@@ -291,7 +291,7 @@ window.addEventListener('keydown', e => {
 
 window.addEventListener('keydown', e => {
   if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
-  const map = { 'v': 'select', 'b': 'brush', 'e': 'eraser', 'p': 'pen', 'f': 'fill', 'a': 'arrow', 'c': 'circle', 's': 'swirl', 'd': 'radial', 'w': 'wave' };
+  const map = { 'v': 'select', 'b': 'brush', 'e': 'eraser', 'p': 'pen', 'f': 'fill', 'a': 'arrow', 'c': 'circle', 's': 'swirl', 'd': 'radial', 'w': 'wave', 'i': 'pipette' };
   if (map[e.key]) setTool(map[e.key]);
   if (e.key === 'Delete' || e.key === 'Backspace') {
     if (state.selectedLayerId != null) {

@@ -21,6 +21,30 @@ export function getPos(e) {
 
 export function clearPreview() { pvCtx.clearRect(0, 0, state.CW, state.CH); }
 
+function flowAt(p) {
+  if (!state.flowData) return null;
+  const x = Math.round(p.x), y = Math.round(p.y);
+  if (x < 0 || x >= state.CW || y < 0 || y >= state.CH) return null;
+  const i = (y * state.CW + x) * 4;
+  return { r: state.flowData[i], g: state.flowData[i + 1] };
+}
+
+function drawFlowArrow(x, y, r, g) {
+  const dirx = (r - 128) / 127 * (state.invertX ? -1 : 1);
+  const diry = -(g - 128) / 127 * (state.invertY ? -1 : 1);
+  if (Math.abs(dirx) < 0.05 && Math.abs(diry) < 0.05) {
+    pvCtx.strokeStyle = 'rgba(255,255,255,0.7)';
+    pvCtx.beginPath(); pvCtx.arc(x, y, 3, 0, TAU); pvCtx.stroke();
+    return;
+  }
+  const len = 100;
+  const ex = x + dirx * len, ey = y + diry * len;
+  pvCtx.strokeStyle = 'rgba(61,220,151,0.95)';
+  pvCtx.lineWidth = 2;
+  pvCtx.beginPath(); pvCtx.moveTo(x, y); pvCtx.lineTo(ex, ey); pvCtx.stroke();
+  drawArrowHead(pvCtx, ex, ey, Math.atan2(diry, dirx), 8);
+}
+
 function drawHoverPreview(p) {
   clearPreview();
   pvCtx.lineWidth = 1.5;
@@ -67,6 +91,19 @@ function drawHoverPreview(p) {
     pvCtx.fillStyle = 'rgba(242,184,75,0.2)';
     pvCtx.fill();
     previewCanvas.style.cursor = 'crosshair';
+  } else if (state.currentTool === 'pipette') {
+    const v = flowAt(p);
+    previewCanvas.style.cursor = 'crosshair';
+    pvCtx.strokeStyle = 'rgba(242,184,75,0.9)';
+    pvCtx.lineWidth = 1.5;
+    pvCtx.beginPath(); pvCtx.arc(p.x, p.y, 9, 0, TAU); pvCtx.stroke();
+    pvCtx.beginPath();
+    pvCtx.moveTo(p.x - 13, p.y); pvCtx.lineTo(p.x - 4, p.y);
+    pvCtx.moveTo(p.x + 4, p.y); pvCtx.lineTo(p.x + 13, p.y);
+    pvCtx.moveTo(p.x, p.y - 13); pvCtx.lineTo(p.x, p.y - 4);
+    pvCtx.moveTo(p.x, p.y + 4); pvCtx.lineTo(p.x, p.y + 13);
+    pvCtx.stroke();
+    if (v) drawFlowArrow(p.x, p.y, v.r, v.g);
   } else if (state.currentTool !== 'select') {
     pvCtx.strokeStyle = 'rgba(242,184,75,0.5)';
     pvCtx.setLineDash([5, 4]);
@@ -232,6 +269,7 @@ function queueRender() {
 }
 
 previewCanvas.addEventListener('pointerdown', e => {
+  if (state.currentTool === 'pipette') return;
   previewCanvas.setPointerCapture(e.pointerId);
   const p = getPos(e);
   state.dragging = true;
@@ -375,6 +413,10 @@ previewCanvas.addEventListener('pointermove', e => {
       if (state.currentTool === 'brush' || state.currentTool === 'eraser') showHUD(e.clientX, e.clientY, 'size ' + state.brushSize + 'px');
       else if (state.currentTool === 'pen') showHUD(e.clientX, e.clientY, state.penAnchors.length > 0 ? `${state.penAnchors.length} anchors \u00B7 click to add` : 'Click to start path');
       else if (state.currentTool === 'fill') showHUD(e.clientX, e.clientY, 'Strength: ' + state.fillStrength.toFixed(2) + ' \u00B7 Tolerance: ' + state.fillTolerance + ' \u00B7 Click & drag');
+      else if (state.currentTool === 'pipette') {
+        const v = flowAt(p);
+        showHUD(e.clientX, e.clientY, v ? 'R:' + v.r + '  G:' + v.g : 'outside canvas');
+      }
       else showHUD(e.clientX, e.clientY, 'radius ' + state.constraintRadius + 'px');
     } else {
       const hit = hitTestConstraint(p.x, p.y);
@@ -573,6 +615,7 @@ const SCROLL_PARAMS = {
 previewCanvas.addEventListener('wheel', e => {
   e.preventDefault();
   const t = state.currentTool;
+  if (t === 'pipette') return;
   const cat = t === 'fill' ? 'fill' : (t === 'brush' || t === 'eraser' || t === 'pen') ? 'brushLike' : 'constraint';
   if (t !== 'fill' && cat !== 'brushLike' && cat !== 'constraint') return;
   const mode = e.shiftKey ? 'shift' : (e.ctrlKey || e.metaKey) ? 'ctrl' : 'none';
