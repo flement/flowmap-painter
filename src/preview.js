@@ -29,7 +29,9 @@ function drawHoverPreview(p) {
     const feather = state.brushFeather;
     const strength = state.brushStrength;
     if (state.currentTool === 'brush') {
-      pvCtx.fillStyle = 'rgba(242,184,75,' + (strength * 0.15).toFixed(2) + ')';
+      pvCtx.fillStyle = state.brushFixed
+        ? 'rgba(' + state.brushFixedR + ',' + state.brushFixedG + ',128,' + (strength * 0.15).toFixed(2) + ')'
+        : 'rgba(242,184,75,' + (strength * 0.15).toFixed(2) + ')';
       pvCtx.beginPath();
       pvCtx.arc(p.x, p.y, r, 0, TAU);
       pvCtx.fill();
@@ -201,6 +203,13 @@ export function finishPenPath() {
 function hudTextFor(dirx, diry) {
   const [r, g] = [128 + dirx * 127 * (state.invertX ? -1 : 1), 128 - diry * 127 * (state.invertY ? -1 : 1)];
   return 'R:' + Math.round(r) + '  G:' + Math.round(g);
+}
+
+export function fixedBrushDir() {
+  return [
+    (state.brushFixedR - 128) / 127 * (state.invertX ? -1 : 1),
+    -(state.brushFixedG - 128) / 127 * (state.invertY ? -1 : 1),
+  ];
 }
 
 function findActiveBrushLayer() {
@@ -446,6 +455,7 @@ previewCanvas.addEventListener('pointermove', e => {
         if (dist > 0.4) {
           const steps = Math.max(1, Math.ceil(dist / 2));
           const layer = findActiveBrushLayer();
+          const fixed = state.currentTool === 'brush' && state.brushFixed ? fixedBrushDir() : null;
           for (let s = 0; s <= steps; s++) {
             const t = s / steps;
             const x = catmullRom(c0.x, c1.x, c2.x, c3.x, t);
@@ -455,8 +465,8 @@ previewCanvas.addEventListener('pointermove', e => {
             const tx = catmullRom(c0.x, c1.x, c2.x, c3.x, tb) - catmullRom(c0.x, c1.x, c2.x, c3.x, ta);
             const ty = catmullRom(c0.y, c1.y, c2.y, c3.y, tb) - catmullRom(c0.y, c1.y, c2.y, c3.y, ta);
             const tlen = Math.hypot(tx, ty) || 1;
-            const dirx = state.currentTool === 'eraser' ? 0 : tx / tlen;
-            const diry = state.currentTool === 'eraser' ? 0 : ty / tlen;
+            const dirx = state.currentTool === 'eraser' ? 0 : (fixed ? fixed[0] : tx / tlen);
+            const diry = state.currentTool === 'eraser' ? 0 : (fixed ? fixed[1] : ty / tlen);
             stampInto(layer.data, x, y, dirx, diry, state.brushSize, state.brushStrength, state.brushFeather);
           }
         }
@@ -464,12 +474,16 @@ previewCanvas.addEventListener('pointermove', e => {
       state.lastPaintPos = p;
       queueRender();
       if (state.currentTool === 'brush') {
-        const n2 = state.brushPath.length;
-        if (n2 >= 2) {
-          const ddx = state.brushPath[n2 - 1].x - state.brushPath[n2 - 2].x;
-          const ddy = state.brushPath[n2 - 1].y - state.brushPath[n2 - 2].y;
-          const dl = Math.hypot(ddx, ddy) || 1;
-          showHUD(e.clientX, e.clientY, hudTextFor(ddx / dl, ddy / dl));
+        if (state.brushFixed) {
+          showHUD(e.clientX, e.clientY, 'R:' + state.brushFixedR + '  G:' + state.brushFixedG);
+        } else {
+          const n2 = state.brushPath.length;
+          if (n2 >= 2) {
+            const ddx = state.brushPath[n2 - 1].x - state.brushPath[n2 - 2].x;
+            const ddy = state.brushPath[n2 - 1].y - state.brushPath[n2 - 2].y;
+            const dl = Math.hypot(ddx, ddy) || 1;
+            showHUD(e.clientX, e.clientY, hudTextFor(ddx / dl, ddy / dl));
+          }
         }
       } else {
         showHUD(e.clientX, e.clientY, 'eraser');

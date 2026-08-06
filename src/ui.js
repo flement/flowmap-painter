@@ -1,11 +1,11 @@
 import { state } from './state.js';
-import { flowCanvas, imgCtx, setStageSize } from './canvas.js';
+import { flowCanvas, imgCtx, setStageSize, TAU } from './canvas.js';
 import { renderComposite, blurOnce } from './rendering.js';
 import { makeBrushLayer, makeMaskLayer, refreshLayerPanel, hideLayerProps, selectLayer } from './layers.js';
 import { setTool } from './tools.js';
 import { serializeProject, loadProject } from './project.js';
 // import { initAutoflow, updateWaterPreview } from './autoflow.js'; // disabled
-import { finishPenPath, clearPreview } from './preview.js';
+import { finishPenPath, clearPreview, fixedBrushDir } from './preview.js';
 import { launchDemo } from './demo.js';
 
 // ==================== Toast ====================
@@ -205,6 +205,34 @@ const v = opacity.value / 100;
 flowCanvas.style.opacity = v;
 
 // ==================== Sliders ====================
+function drawFixedDirPreview() {
+  const c = document.getElementById('fixedDirPreview');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height, cx = W / 2, cy = H / 2;
+  const lum = 0.299 * state.brushFixedR + 0.587 * state.brushFixedG + 0.114 * 128;
+  const ink = lum > 140 ? '#111' : '#fff';
+  ctx.fillStyle = 'rgb(' + state.brushFixedR + ',' + state.brushFixedG + ',128)';
+  ctx.fillRect(0, 0, W, H);
+  const [dx, dy] = fixedBrushDir();
+  const len = Math.hypot(dx, dy);
+  if (len < 0.05) {
+    ctx.fillStyle = ink;
+    ctx.beginPath(); ctx.arc(cx, cy, 3, 0, TAU); ctx.fill();
+    return;
+  }
+  const ux = dx / len, uy = dy / len;
+  const L = Math.min(1, Math.max(len, 0.1)) * (H / 2 - 10);
+  const tx = cx + ux * L, ty = cy + uy * L;
+  const ang = Math.atan2(uy, ux);
+  ctx.strokeStyle = ink; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(tx, ty); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(tx + 9 * Math.cos(ang + 2.5), ty + 9 * Math.sin(ang + 2.5));
+  ctx.lineTo(tx, ty);
+  ctx.lineTo(tx + 9 * Math.cos(ang - 2.5), ty + 9 * Math.sin(ang - 2.5));
+  ctx.stroke();
+}
 function bindSlider(id, valId, setter, fmt, div) {
   const el = document.getElementById(id);
   const valEl = document.getElementById(valId);
@@ -219,6 +247,8 @@ bindSlider('brushSize', 'brushSizeVal', v => state.brushSize = v, v => v + ' px'
 bindSlider('brushStrength', 'brushStrengthVal', v => state.brushStrength = v, v => v.toFixed(2), 100);
 bindSlider('brushFeather', 'brushFeatherVal', v => state.brushFeather = v, v => v.toFixed(2), 100);
 bindSlider('brushSmooth', 'brushSmoothVal', v => state.brushSmooth = v, v => Math.round(v * 100) + '%', 100);
+bindSlider('brushFixedR', 'brushFixedRVal', v => { state.brushFixedR = v; drawFixedDirPreview(); }, v => '' + v);
+bindSlider('brushFixedG', 'brushFixedGVal', v => { state.brushFixedG = v; drawFixedDirPreview(); }, v => '' + v);
 bindSlider('constraintRadius', 'constraintRadiusVal', v => state.constraintRadius = v, v => v + ' px');
 bindSlider('constraintStrength', 'constraintStrengthVal', v => state.constraintStrength = v, v => v.toFixed(2), 100);
 bindSlider('constraintFeather', 'constraintFeatherVal', v => state.constraintFeather = v, v => v.toFixed(2), 100);
@@ -229,8 +259,14 @@ bindSlider('waveOffset', 'waveOffsetVal', v => state.waveOffset = v, v => v.toFi
 bindSlider('fillStrength', 'fillStrengthVal', v => state.fillStrength = v, v => v.toFixed(2), 100);
 bindSlider('fillTolerance', 'fillToleranceVal', v => state.fillTolerance = v, v => v);
 
-document.getElementById('invertX').addEventListener('change', e => { state.invertX = e.target.checked; renderComposite(); });
-document.getElementById('invertY').addEventListener('change', e => { state.invertY = e.target.checked; renderComposite(); });
+document.getElementById('invertX').addEventListener('change', e => { state.invertX = e.target.checked; renderComposite(); drawFixedDirPreview(); });
+document.getElementById('invertY').addEventListener('change', e => { state.invertY = e.target.checked; renderComposite(); drawFixedDirPreview(); });
+
+document.getElementById('brushFixed').addEventListener('change', e => {
+  state.brushFixed = e.target.checked;
+  document.getElementById('fixedDirSliders').style.display = e.target.checked ? '' : 'none';
+  drawFixedDirPreview();
+});
 
 // ==================== Blur ====================
 const blurAmount = document.getElementById('blurAmount');

@@ -19,6 +19,8 @@ export function setTool(t) {
   const isBrushLike = (t === 'brush' || t === 'eraser' || t === 'pen');
   brushOptsEl.style.display = isBrushLike ? '' : 'none';
   smoothPanelEl.style.display = t === 'brush' ? '' : 'none';
+  document.getElementById('fixedDirPanel').style.display = t === 'brush' ? '' : 'none';
+  document.getElementById('fixedDirSliders').style.display = (t === 'brush' && state.brushFixed) ? '' : 'none';
   fillOptsEl.style.display = t === 'fill' ? '' : 'none';
   shapeOptsEl.style.display = (t === 'arrow' || t === 'circle' || t === 'swirl' || t === 'radial' || t === 'wave') ? '' : 'none';
   selectOptsEl.style.display = t === 'select' ? '' : 'none';

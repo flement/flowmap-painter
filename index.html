@@ -169,6 +169,16 @@
             <div class="field-row"><span class="field-label">Smooth</span><span class="field-value" id="brushSmoothVal">0%</span></div>
             <input type="range" id="brushSmooth" min="0" max="100" value="0">
           </div>
+          <div class="field" id="fixedDirPanel">
+            <label class="checkbox-row"><input type="checkbox" id="brushFixed"> Fixed direction</label>
+          </div>
+          <div class="field" id="fixedDirSliders" style="display:none;">
+            <canvas id="fixedDirPreview" width="120" height="56" class="fixed-dir-preview"></canvas>
+            <div class="field-row"><span class="field-label">R (horizontal)</span><span class="field-value" id="brushFixedRVal">128</span></div>
+            <input type="range" id="brushFixedR" min="0" max="255" value="128">
+            <div class="field-row"><span class="field-label">G (vertical)</span><span class="field-value" id="brushFixedGVal">128</span></div>
+            <input type="range" id="brushFixedG" min="0" max="255" value="128">
+          </div>
         </div>
       </div>
 
