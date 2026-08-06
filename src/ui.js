@@ -350,6 +350,7 @@ document.getElementById('addMaskBtn').addEventListener('click', () => {
         state.layers.push(layer);
         refreshLayerPanel();
         selectLayer(layer.id);
+        renderComposite();
         toast('Mask layer added');
       };
       img.src = ev.target.result;
