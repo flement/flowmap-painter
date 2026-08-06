@@ -346,6 +346,7 @@ document.getElementById('addMaskBtn').addEventListener('click', () => {
         ctx.drawImage(img, 0, 0, state.CW, state.CH);
         const maskData = ctx.getImageData(0, 0, state.CW, state.CH);
         const layer = makeMaskLayer(maskData);
+        layer.rawMaskData = maskData;
         state.layers.push(layer);
         refreshLayerPanel();
         selectLayer(layer.id);

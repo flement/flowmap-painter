@@ -204,8 +204,7 @@ export function renderCoastFoam(layer) {
     for (let x = 0; x < state.CW; x++) {
       const mx = Math.floor(x * W / state.CW), my = Math.floor(y * H / state.CH);
       const mi = my * W + mx;
-      const inside = bin[mi];
-      if (layer.coastSide === 'outside' ? inside : !inside) continue;
+      if (!bin[mi]) continue;
       const d = dist[mi];
       if (d <= 0 || d > N) continue;
       const xm = mx > 0 ? mi - 1 : mi + 1, xp = mx < W - 1 ? mi + 1 : mi - 1;
