@@ -250,6 +250,8 @@ export function fixedBrushDir() {
 }
 
 function findActiveBrushLayer() {
+  const sel = state.layers.find(l => l.id === state.selectedLayerId);
+  if (sel && sel.type === 'brush' && sel.visible) return sel;
   for (let i = state.layers.length - 1; i >= 0; i--) {
     if (state.layers[i].type === 'brush' && state.layers[i].visible) return state.layers[i];
   }

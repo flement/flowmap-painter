@@ -395,13 +395,15 @@ export function loadMaskOnto(layer, file) {
 
 export function selectLayer(id) {
   state.selectedLayerId = id;
-  if (state.currentTool !== 'select') setTool('select');
+  const layer = state.layers.find(l => l.id === id);
+  const tool = layer && layer.type === 'brush' ? 'brush' : 'select';
+  if (state.currentTool !== tool) setTool(tool);
+  state.selectedLayerId = id;
   document.getElementById('brushOpts').style.display = 'none';
   document.getElementById('shapeOpts').style.display = 'none';
   document.getElementById('selectOpts').style.display = 'none';
   refreshLayerPanel();
   drawOverlay();
-  const layer = state.layers.find(l => l.id === id);
   if (layer) updateLayerProps(layer);
   else hideLayerProps();
 }
