@@ -46,7 +46,7 @@ export const state = {
   penClosed: false,
   penDraggingHandle: false,
   penActiveLayerId: null,
-  renderQueued: false,
+  dirtyRect: null,
   selectDragLayer: null,
   selectDragOffset: null,
   selectDragStart: null,

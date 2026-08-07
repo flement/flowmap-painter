@@ -311,31 +311,58 @@ export function renderCoastFoam(layer) {
   }
 }
 
-export function renderComposite() {
-  state.flowImageData = flowCtx.createImageData(state.CW, state.CH);
-  state.flowData = state.flowImageData.data;
-  for (let i = 0; i < state.flowData.length; i += 4) {
-    state.flowData[i] = 128; state.flowData[i + 1] = 128; state.flowData[i + 2] = 128; state.flowData[i + 3] = 255;
+function applyBrushPixel(flow, ld, i) {
+  const a = ld[i + 3];
+  if (a <= 0) return;
+  if (a >= 255) {
+    flow[i] = ld[i];
+    flow[i + 1] = ld[i + 1];
+  } else {
+    const amt = a / 255;
+    flow[i] = clamp8(flow[i] + (ld[i] - flow[i]) * amt);
+    flow[i + 1] = clamp8(flow[i + 1] + (ld[i + 1] - flow[i + 1]) * amt);
+  }
+}
+
+function fillNeutral(data, x0, y0, x1, y1) {
+  for (let y = y0; y <= y1; y++) {
+    let i = (y * state.CW + x0) * 4;
+    for (let x = x0; x <= x1; x++, i += 4) {
+      data[i] = 128; data[i + 1] = 128; data[i + 2] = 128; data[i + 3] = 255;
+    }
+  }
+}
+
+export function renderComposite(dirty = null) {
+  if (!state.flowImageData || state.flowImageData.width !== state.CW || state.flowImageData.height !== state.CH) {
+    state.flowImageData = flowCtx.createImageData(state.CW, state.CH);
+    state.flowData = state.flowImageData.data;
+  }
+  const flow = state.flowData;
+  const partial = dirty !== null && !state.layers.some(l => l.visible && l.type !== 'brush');
+  if (partial) {
+    fillNeutral(flow, dirty.x0, dirty.y0, dirty.x1, dirty.y1);
+  } else {
+    fillNeutral(flow, 0, 0, state.CW - 1, state.CH - 1);
   }
   for (const layer of state.layers) {
     if (!layer.visible) continue;
     if (layer.type === 'brush') {
-      for (let i = 0; i < state.flowData.length; i += 4) {
-        const a = layer.data[i + 3];
-        if (a <= 0) continue;
-        if (a >= 255) {
-          state.flowData[i] = layer.data[i];
-          state.flowData[i + 1] = layer.data[i + 1];
-        } else {
-          const amt = a / 255;
-          state.flowData[i] = clamp8(state.flowData[i] + (layer.data[i] - state.flowData[i]) * amt);
-          state.flowData[i + 1] = clamp8(state.flowData[i + 1] + (layer.data[i + 1] - state.flowData[i + 1]) * amt);
+      const ld = layer.data;
+      if (partial) {
+        for (let y = dirty.y0; y <= dirty.y1; y++) {
+          let i = (y * state.CW + dirty.x0) * 4;
+          for (let x = dirty.x0; x <= dirty.x1; x++, i += 4) {
+            applyBrushPixel(flow, ld, i);
+          }
         }
+      } else {
+        for (let i = 0; i < flow.length; i += 4) applyBrushPixel(flow, ld, i);
       }
     } else if (layer.type === 'pen') {
-      renderPenStrokeTo(state.flowData, layer);
+      renderPenStrokeTo(flow, layer);
     } else if (layer.type === 'constraint') {
-      renderConstraintTo(state.flowData, layer.shape);
+      renderConstraintTo(flow, layer.shape);
     } else if (layer.type === 'mask' && layer.maskData) {
       for (let y = 0; y < state.CH; y++) {
         for (let x = 0; x < state.CW; x++) {
@@ -344,8 +371,8 @@ export function renderComposite() {
           const my = Math.floor(y * layer.maskData.height / state.CH);
           const mi = (my * layer.maskData.width + mx) * 4;
           const amt = layer.maskData.data[mi] / 255;
-          state.flowData[fi] = clamp8(128 + (state.flowData[fi] - 128) * amt);
-          state.flowData[fi + 1] = clamp8(128 + (state.flowData[fi + 1] - 128) * amt);
+          flow[fi] = clamp8(128 + (flow[fi] - 128) * amt);
+          flow[fi + 1] = clamp8(128 + (flow[fi + 1] - 128) * amt);
         }
       }
       if (layer.coastEnabled && layer.coastWidth > 0) renderCoastFoam(layer);
@@ -353,7 +380,11 @@ export function renderComposite() {
       for (let p = 0; p < layer.passes; p++) blurOnce();
     }
   }
-  flowCtx.putImageData(state.flowImageData, 0, 0);
+  if (partial) {
+    flowCtx.putImageData(state.flowImageData, 0, 0, dirty.x0, dirty.y0, dirty.x1 - dirty.x0 + 1, dirty.y1 - dirty.y0 + 1);
+  } else {
+    flowCtx.putImageData(state.flowImageData, 0, 0);
+  }
   drawOverlay();
   debouncedSave();
 }

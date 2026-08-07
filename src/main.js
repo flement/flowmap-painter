@@ -18,6 +18,10 @@ if (!loaded) {
 renderComposite();
 refreshLayerPanel();
 
-window.addEventListener('resize', () => { setStageSize(state.CW, state.CH); renderComposite(); });
+let resizeRaf = null;
+window.addEventListener('resize', () => {
+  cancelAnimationFrame(resizeRaf);
+  resizeRaf = requestAnimationFrame(() => { setStageSize(state.CW, state.CH); renderComposite(); });
+});
 window.addEventListener('beforeunload', saveToStorage);
 window.addEventListener('pagehide', saveToStorage);

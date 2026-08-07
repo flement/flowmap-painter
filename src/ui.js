@@ -309,6 +309,7 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   pushUndo();
   state.penAnchors = []; state.penClosed = false; state.penActiveLayerId = null;
   state.layers.length = 0;
+  state.layers.push(makeBrushLayer());
   state.selectedLayerId = null;
   hideLayerProps();
   refreshLayerPanel();

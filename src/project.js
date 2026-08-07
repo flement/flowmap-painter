@@ -5,8 +5,11 @@ import { makeBrushLayer } from './layers.js';
 export const STORAGE_KEY = 'flowmap-studio';
 
 function uint8ToBase64(arr) {
+  const CH = 0x8000;
   let bin = '';
-  for (let i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]);
+  for (let i = 0; i < arr.length; i += CH) {
+    bin += String.fromCharCode.apply(null, arr.subarray(i, i + CH));
+  }
   return btoa(bin);
 }
 

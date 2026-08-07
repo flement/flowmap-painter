@@ -261,11 +261,42 @@ function findActiveBrushLayer() {
   return state.layers[0];
 }
 
-function queueRender() {
-  if (!state.renderQueued) {
-    state.renderQueued = true;
-    requestAnimationFrame(() => { state.renderQueued = false; renderComposite(); });
+function addDirty(x0, y0, x1, y1) {
+  x0 = Math.max(0, Math.floor(x0));
+  y0 = Math.max(0, Math.floor(y0));
+  x1 = Math.min(state.CW - 1, Math.ceil(x1));
+  y1 = Math.min(state.CH - 1, Math.ceil(y1));
+  if (x1 < x0 || y1 < y0) return;
+  const d = state.dirtyRect;
+  if (!d) state.dirtyRect = { x0, y0, x1, y1 };
+  else {
+    if (x0 < d.x0) d.x0 = x0;
+    if (y0 < d.y0) d.y0 = y0;
+    if (x1 > d.x1) d.x1 = x1;
+    if (y1 > d.y1) d.y1 = y1;
   }
+}
+
+function addStrokeDirty(c1, c2, r) {
+  addDirty(Math.min(c1.x, c2.x) - r, Math.min(c1.y, c2.y) - r, Math.max(c1.x, c2.x) + r, Math.max(c1.y, c2.y) + r);
+}
+
+let renderRaf = null;
+function queueRender() {
+  if (renderRaf != null) return;
+  renderRaf = requestAnimationFrame(() => {
+    renderRaf = null;
+    const d = state.dirtyRect;
+    state.dirtyRect = null;
+    renderComposite(d);
+  });
+}
+
+function renderNow() {
+  if (renderRaf != null) { cancelAnimationFrame(renderRaf); renderRaf = null; }
+  const d = state.dirtyRect;
+  state.dirtyRect = null;
+  renderComposite(d);
 }
 
 previewCanvas.addEventListener('pointerdown', e => {
@@ -358,7 +389,8 @@ previewCanvas.addEventListener('pointerdown', e => {
     if (state.currentTool === 'brush') state.brushAlpha = new Uint8Array(state.CW * state.CH);
     if (state.currentTool === 'eraser') {
       eraseInto(layer.data, p.x, p.y, state.brushSize, state.brushStrength, state.brushFeather);
-      renderComposite();
+      addDirty(p.x - state.brushSize, p.y - state.brushSize, p.x + state.brushSize, p.y + state.brushSize);
+      renderNow();
     }
   } else if (state.currentTool === 'pen') {
     if (state.penAnchors.length === 0) {
@@ -519,6 +551,7 @@ previewCanvas.addEventListener('pointermove', e => {
               stampBrushInto(layer.data, x, y, dx, dy, state.brushSize, state.brushStrength, state.brushFeather, state.brushAlpha);
             }
           }
+          addStrokeDirty(c1, c2, state.brushSize);
         }
       }
       state.lastPaintPos = p;
@@ -704,7 +737,8 @@ document.addEventListener('pointerup', e => {
     renderComposite();
   } else if (state.currentTool === 'brush' || state.currentTool === 'eraser') {
     if (state.currentTool === 'brush') state.brushAlpha = null;
-    renderComposite();
+    if (state.dirtyRect) renderNow();
+    else state.dirtyRect = null;
   } else if (state.currentTool === 'pen') {
     state.penDraggingHandle = false;
     if (state.penAnchors.length >= 2) {
