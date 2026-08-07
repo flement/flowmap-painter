@@ -1,7 +1,7 @@
 import { state } from './state.js';
 import { flowCanvas, imgCtx, setStageSize, TAU } from './canvas.js';
-import { renderComposite, blurOnce } from './rendering.js';
-import { makeBrushLayer, makeMaskLayer, refreshLayerPanel, hideLayerProps, selectLayer } from './layers.js';
+import { renderComposite } from './rendering.js';
+import { makeBrushLayer, makeMaskLayer, makeBlurLayer, refreshLayerPanel, hideLayerProps, selectLayer } from './layers.js';
 import { setTool, updateSwirlOpts } from './tools.js';
 import { serializeProject, loadProject } from './project.js';
 // import { initAutoflow, updateWaterPreview } from './autoflow.js'; // disabled
@@ -279,19 +279,6 @@ document.getElementById('brushFixed').addEventListener('change', e => {
   drawFixedDirPreview();
 });
 
-// ==================== Blur ====================
-const blurAmount = document.getElementById('blurAmount');
-const blurAmountVal = document.getElementById('blurAmountVal');
-blurAmount.addEventListener('input', () => blurAmountVal.textContent = blurAmount.value);
-document.getElementById('applyBlurBtn').addEventListener('click', () => {
-  const passes = parseInt(blurAmount.value, 10);
-  if (passes <= 0) { toast('Set blur passes > 0'); return; }
-  pushUndo();
-  for (let p = 0; p < passes; p++) blurOnce();
-  renderComposite();
-  toast('Blur applied (' + passes + ' passes)');
-});
-
 // ==================== Keyboard Shortcuts ====================
 window.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
@@ -374,6 +361,16 @@ document.getElementById('newBrushLayerBtn').addEventListener('click', () => {
   selectLayer(layer.id);
   renderComposite();
   toast('New brush layer');
+});
+
+document.getElementById('addBlurBtn').addEventListener('click', () => {
+  pushUndo();
+  const layer = makeBlurLayer();
+  state.layers.push(layer);
+  refreshLayerPanel();
+  selectLayer(layer.id);
+  renderComposite();
+  toast('Blur layer added');
 });
 
 document.getElementById('addMaskBtn').addEventListener('click', () => {

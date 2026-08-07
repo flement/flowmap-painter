@@ -349,6 +349,8 @@ export function renderComposite() {
         }
       }
       if (layer.coastEnabled && layer.coastWidth > 0) renderCoastFoam(layer);
+    } else if (layer.type === 'blur' && layer.passes > 0) {
+      for (let p = 0; p < layer.passes; p++) blurOnce();
     }
   }
   flowCtx.putImageData(state.flowImageData, 0, 0);

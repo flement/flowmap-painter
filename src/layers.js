@@ -21,6 +21,10 @@ export function makeMaskLayer(maskImageData) {
   return { id: state.nextId++, type: 'mask', name: 'Mask', visible: true, maskData: maskImageData, rawMaskData: null, invert: false, threshold: 0, coastEnabled: false, coastWidth: 20, coastStrength: 1 };
 }
 
+export function makeBlurLayer() {
+  return { id: state.nextId++, type: 'blur', name: 'Blur', visible: true, passes: 4 };
+}
+
 function reprocessMask(layer) {
   if (!layer.rawMaskData) return;
   const raw = layer.rawMaskData;
@@ -88,6 +92,12 @@ function generateLayerThumb(layer, w, h) {
     tmpC.width = layer.maskData.width; tmpC.height = layer.maskData.height;
     tmpC.getContext('2d').putImageData(layer.maskData, 0, 0);
     ctx.drawImage(tmpC, 0, 0, w, h);
+  } else if (layer.type === 'blur') {
+    const g = ctx.createRadialGradient(w / 2, h / 2, 1, w / 2, h / 2, w / 2);
+    g.addColorStop(0, '#a8a8a8');
+    g.addColorStop(1, '#808080');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
   }
   return c;
 }
@@ -303,6 +313,12 @@ export function updateLayerProps(layer) {
     const hint = document.createElement('p');
     hint.className = 'hint';
     hint.textContent = 'Brush layers store pixel data. Use the brush tool to modify.';
+    layerPropsEl.appendChild(hint);
+  } else if (layer.type === 'blur') {
+    addSlider('Passes', layer.passes, 1, 20, 1, v => { layer.passes = v; });
+    const hint = document.createElement('p');
+    hint.className = 'hint';
+    hint.textContent = 'Blur smoothes the whole flow map. Toggle visibility to compare.';
     layerPropsEl.appendChild(hint);
   } else if (layer.type === 'mask') {
     if (layer.maskData) {
