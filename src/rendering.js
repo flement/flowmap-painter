@@ -40,6 +40,64 @@ export function stampInto(target, cx, cy, dirx, diry, radius, strength, feather)
   }
 }
 
+export function stampBrushInto(target, cx, cy, dirx, diry, radius, strength, feather, alphaMap) {
+  const [targetR, targetG] = dirToTarget(dirx, diry);
+  const r2 = radius * radius;
+  const edge0 = radius * (1 - feather);
+  const denom = Math.max(1, radius - edge0);
+  const minX = Math.max(0, Math.floor(cx - radius)), maxX = Math.min(state.CW - 1, Math.ceil(cx + radius));
+  const minY = Math.max(0, Math.floor(cy - radius)), maxY = Math.min(state.CH - 1, Math.ceil(cy + radius));
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      const dx = x - cx, dy = y - cy;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > r2) continue;
+      const d = Math.sqrt(d2);
+      const t = d <= edge0 ? 0 : (d - edge0) / denom;
+      const a255 = Math.round(strength * (1 - t * t * (3 - 2 * t)) * 255);
+      if (a255 <= 0) continue;
+      const key = y * state.CW + x;
+      const oldA = alphaMap[key];
+      if (a255 <= oldA) continue;
+      alphaMap[key] = a255;
+      const i = (y * state.CW + x) * 4;
+      if (target[i + 3] === 0) {
+        target[i] = targetR;
+        target[i + 1] = targetG;
+        target[i + 2] = 128;
+        target[i + 3] = a255;
+      } else {
+        const amt = (a255 - oldA) / (255 - oldA);
+        target[i] = clamp8(target[i] + (targetR - target[i]) * amt);
+        target[i + 1] = clamp8(target[i + 1] + (targetG - target[i + 1]) * amt);
+        target[i + 2] = 128;
+        if (a255 > target[i + 3]) target[i + 3] = a255;
+      }
+    }
+  }
+}
+
+export function eraseInto(target, cx, cy, radius, strength, feather) {
+  const r2 = radius * radius;
+  const edge0 = radius * (1 - feather);
+  const denom = Math.max(1, radius - edge0);
+  const minX = Math.max(0, Math.floor(cx - radius)), maxX = Math.min(state.CW - 1, Math.ceil(cx + radius));
+  const minY = Math.max(0, Math.floor(cy - radius)), maxY = Math.min(state.CH - 1, Math.ceil(cy + radius));
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      const dx = x - cx, dy = y - cy;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > r2) continue;
+      const d = Math.sqrt(d2);
+      const t = d <= edge0 ? 0 : (d - edge0) / denom;
+      const a = strength * (1 - t * t * (3 - 2 * t));
+      if (a <= 0) continue;
+      const i = (y * state.CW + x) * 4;
+      target[i + 3] = Math.round(target[i + 3] * (1 - a));
+    }
+  }
+}
+
 export function rotationalVector(dx, dy, d, rotDir, spiral) {
   const r = Math.max(d, 1.0);
   const invR = 1.0 / r;
@@ -263,9 +321,15 @@ export function renderComposite() {
     if (!layer.visible) continue;
     if (layer.type === 'brush') {
       for (let i = 0; i < state.flowData.length; i += 4) {
-        if (layer.data[i] !== 128 || layer.data[i + 1] !== 128) {
+        const a = layer.data[i + 3];
+        if (a <= 0) continue;
+        if (a >= 255) {
           state.flowData[i] = layer.data[i];
           state.flowData[i + 1] = layer.data[i + 1];
+        } else {
+          const amt = a / 255;
+          state.flowData[i] = clamp8(state.flowData[i] + (layer.data[i] - state.flowData[i]) * amt);
+          state.flowData[i + 1] = clamp8(state.flowData[i + 1] + (layer.data[i + 1] - state.flowData[i + 1]) * amt);
         }
       }
     } else if (layer.type === 'pen') {

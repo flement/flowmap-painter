@@ -16,6 +16,7 @@ export const state = {
   brushFixed: false,
   brushFixedR: 128,
   brushFixedG: 128,
+  brushAlpha: null,
   smoothX: 0,
   smoothY: 0,
   constraintRadius: 80,

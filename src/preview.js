@@ -1,7 +1,7 @@
 import { state } from './state.js';
 import { previewCanvas, pvCtx, TAU } from './canvas.js';
 import { samplePenPath, hitPenAnchor, insertPenAnchor, drawPenPath, drawPenHandles } from './bezier.js';
-import { renderComposite, stampInto, rotationalVector, floodFillBrush } from './rendering.js';
+import { renderComposite, stampBrushInto, eraseInto, rotationalVector, floodFillBrush } from './rendering.js';
 import { drawOverlay, drawArrowHead, hitTestConstraint, hitArrowHandle } from './overlay.js';
 import { makeBrushLayer, refreshLayerPanel, selectLayer, hideLayerProps } from './layers.js';
 import { pushUndo, showHUD, hideHUD } from './ui.js';
@@ -355,8 +355,9 @@ previewCanvas.addEventListener('pointerdown', e => {
     state.smoothX = p.x; state.smoothY = p.y;
     const layer = findActiveBrushLayer();
     state.lastPaintPos = p;
+    if (state.currentTool === 'brush') state.brushAlpha = new Uint8Array(state.CW * state.CH);
     if (state.currentTool === 'eraser') {
-      stampInto(layer.data, p.x, p.y, 0, 0, state.brushSize, state.brushStrength, state.brushFeather);
+      eraseInto(layer.data, p.x, p.y, state.brushSize, state.brushStrength, state.brushFeather);
       renderComposite();
     }
   } else if (state.currentTool === 'pen') {
@@ -497,19 +498,26 @@ previewCanvas.addEventListener('pointermove', e => {
         if (dist > 0.4) {
           const steps = Math.max(1, Math.ceil(dist / 2));
           const layer = findActiveBrushLayer();
-          const fixed = state.currentTool === 'brush' && state.brushFixed ? fixedBrushDir() : null;
-          for (let s = 0; s <= steps; s++) {
-            const t = s / steps;
-            const x = catmullRom(c0.x, c1.x, c2.x, c3.x, t);
-            const y = catmullRom(c0.y, c1.y, c2.y, c3.y, t);
-            const eps = 0.01;
-            const ta = Math.max(0, t - eps), tb = Math.min(1, t + eps);
-            const tx = catmullRom(c0.x, c1.x, c2.x, c3.x, tb) - catmullRom(c0.x, c1.x, c2.x, c3.x, ta);
-            const ty = catmullRom(c0.y, c1.y, c2.y, c3.y, tb) - catmullRom(c0.y, c1.y, c2.y, c3.y, ta);
-            const tlen = Math.hypot(tx, ty) || 1;
-            const dirx = state.currentTool === 'eraser' ? 0 : (fixed ? fixed[0] : tx / tlen);
-            const diry = state.currentTool === 'eraser' ? 0 : (fixed ? fixed[1] : ty / tlen);
-            stampInto(layer.data, x, y, dirx, diry, state.brushSize, state.brushStrength, state.brushFeather);
+          if (state.currentTool === 'eraser') {
+            for (let s = 0; s <= steps; s++) {
+              const t = s / steps;
+              eraseInto(layer.data, catmullRom(c0.x, c1.x, c2.x, c3.x, t), catmullRom(c0.y, c1.y, c2.y, c3.y, t), state.brushSize, state.brushStrength, state.brushFeather);
+            }
+          } else {
+            const fixed = state.brushFixed ? fixedBrushDir() : null;
+            for (let s = 0; s <= steps; s++) {
+              const t = s / steps;
+              const x = catmullRom(c0.x, c1.x, c2.x, c3.x, t);
+              const y = catmullRom(c0.y, c1.y, c2.y, c3.y, t);
+              const eps = 0.01;
+              const ta = Math.max(0, t - eps), tb = Math.min(1, t + eps);
+              const tx = catmullRom(c0.x, c1.x, c2.x, c3.x, tb) - catmullRom(c0.x, c1.x, c2.x, c3.x, ta);
+              const ty = catmullRom(c0.y, c1.y, c2.y, c3.y, tb) - catmullRom(c0.y, c1.y, c2.y, c3.y, ta);
+              const tlen = Math.hypot(tx, ty) || 1;
+              const dx = fixed ? fixed[0] : tx / tlen;
+              const dy = fixed ? fixed[1] : ty / tlen;
+              stampBrushInto(layer.data, x, y, dx, dy, state.brushSize, state.brushStrength, state.brushFeather, state.brushAlpha);
+            }
           }
         }
       }
@@ -695,6 +703,7 @@ document.addEventListener('pointerup', e => {
     floodFillBrush(layer.data, state.dragStart.x, state.dragStart.y, dirx, diry, state.fillStrength, state.fillTolerance);
     renderComposite();
   } else if (state.currentTool === 'brush' || state.currentTool === 'eraser') {
+    if (state.currentTool === 'brush') state.brushAlpha = null;
     renderComposite();
   } else if (state.currentTool === 'pen') {
     state.penDraggingHandle = false;

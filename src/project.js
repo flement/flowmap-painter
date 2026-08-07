@@ -17,19 +17,19 @@ function base64ToUint8(str) {
   return arr;
 }
 
-function isAllNeutral(data) {
+function isAllUnpainted(data) {
   for (let i = 0; i < data.length; i += 4) {
-    if (data[i] !== 128 || data[i + 1] !== 128) return false;
+    if (data[i + 3] !== 0) return false;
   }
   return true;
 }
 
 export function serializeProject() {
   return JSON.stringify({
-    CW: state.CW, CH: state.CH, invertX: state.invertX, invertY: state.invertY,
+    version: 2, CW: state.CW, CH: state.CH, invertX: state.invertX, invertY: state.invertY,
     layers: state.layers.map(l => {
       if (l.type === 'brush') {
-        if (isAllNeutral(l.data)) return { id: l.id, type: l.type, name: l.name, visible: l.visible, data: null };
+        if (isAllUnpainted(l.data)) return { id: l.id, type: l.type, name: l.name, visible: l.visible, data: null };
         return { ...l, data: uint8ToBase64(l.data) };
       }
       if (l.type === 'mask' && l.maskData) {
@@ -64,6 +64,12 @@ export function loadProject(json) {
       if (l.type === 'brush') {
         const layer = makeBrushLayer();
         if (l.data) layer.data.set(base64ToUint8(l.data));
+        if (data.version !== 2) {
+          const d = layer.data;
+          for (let i = 0; i < d.length; i += 4) {
+            d[i + 3] = (d[i] !== 128 || d[i + 1] !== 128) ? 255 : 0;
+          }
+        }
         Object.assign(layer, { id: l.id, name: l.name, visible: l.visible });
         newLayers.push(layer);
       } else if (l.type === 'mask' && l.maskData) {

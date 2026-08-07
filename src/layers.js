@@ -12,7 +12,7 @@ const layerPropsEl = document.getElementById('layerProps');
 export function makeBrushLayer() {
   const data = new Uint8ClampedArray(state.CW * state.CH * 4);
   for (let i = 0; i < data.length; i += 4) {
-    data[i] = 128; data[i + 1] = 128; data[i + 2] = 128; data[i + 3] = 255;
+    data[i] = 128; data[i + 1] = 128; data[i + 2] = 128; data[i + 3] = 0;
   }
   return { id: state.nextId++, type: 'brush', name: 'Brush', visible: true, data };
 }
