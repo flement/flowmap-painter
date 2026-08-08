@@ -11,7 +11,7 @@ export function blendInto(target, x, y, targetR, targetG, amount) {
   target[i] = clamp8(target[i] + (targetR - target[i]) * amount);
   target[i + 1] = clamp8(target[i + 1] + (targetG - target[i + 1]) * amount);
   target[i + 2] = 128;
-  if (a255 > target[i + 3]) target[i + 3] = a255;
+  target[i + 3] = Math.round(target[i + 3] + (a255 * (255 - target[i + 3])) / 255);
 }
 
 export function dirToTarget(dirx, diry) {

@@ -197,7 +197,7 @@ Click and drag to set the fill direction. On release, `floodFillBrush()` perform
 
 - **Direction**: normalized delta of the smoothed cursor over the last `DIR_CHORD` (4) px of travel, updated only once the cursor has moved ≥4px (prevents jitter and neutral-colored stroke starts). Fixed direction bypasses this.
 - **Painting**: `strokePaint()` stamps `stampBrush()` along the segment between consecutive smoothed points every `radius × 0.5` px. On a direction change, the stamp color is interpolated from the previous segment's color to the new direction's color across the segment, so turns get fluid color transitions (like the pen's bezier points).
-- **Opacity**: `blendInto` caps layer alpha at the max stamp value (`max(current, a255)`) — no self-darkening from overlapping stamps, and erasing then re-painting works. The stamp color always blends toward the newest stamp, so overpainting recolors cleanly.
+- **Opacity**: `blendInto` accumulates layer alpha with the over operator (`A' = A + a − A·a`), so a new stroke's coverage applies over whatever is already painted — a feathered stroke keeps its fade over solid paint, and a hard stroke (feather 0) fully replaces. Erasing reduces alpha and re-painting rebuilds it. The stamp color always blends toward the newest stamp, so overpainting recolors cleanly.
 - **Eraser**: `eraseInto()` sets `alpha *= (1 - a)` for every pixel in the stamp, independent of the stroke map — it only reveals lower layers.
 
 ### Undo System
