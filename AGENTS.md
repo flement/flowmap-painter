@@ -191,9 +191,14 @@ The scroll handler is data-driven via `SCROLL_PARAMS` table in `preview.js`, key
 
 Click and drag to set the fill direction. On release, `floodFillBrush()` performs a stack-based flood fill on the active brush layer. It compares R/G values of neighboring pixels against the click-point using `state.fillTolerance` (0–127) and blends matching pixels toward the drag direction using `state.fillStrength`.
 
-### Brush Tool (Catmull-Rom)
+### Brush Tool
 
-The brush tool uses Catmull-Rom spline interpolation for smooth curves. Points are buffered in `state.brushPath` (up to 8). On each pointermove, the last 3–4 points are fed to `catmullRom()` to compute position and tangent direction. Stamps are placed every 2px along the spline segment, with direction derived from the spline tangent.
+ The brush paints the gesture direction at each stamp; `Smooth` low-passes the cursor position (EMA, `alpha = 1 - brushSmooth`, clamped to ≥0.05); `Fixed direction` substitutes a constant vector for the gesture direction. Per-stroke state lives in a module-local `stroke` object in `preview.js`, not in `state`. `Size` is a **diameter** — the stamp radius is `brushSize / 2`.
+
+- **Direction**: normalized delta of the smoothed cursor over the last `DIR_CHORD` (4) px of travel, updated only once the cursor has moved ≥4px (prevents jitter and neutral-colored stroke starts). Fixed direction bypasses this.
+- **Painting**: `strokePaint()` stamps `stampBrush()` along the segment between consecutive smoothed points every `radius × 0.5` px. On a direction change, the stamp color is interpolated from the previous segment's color to the new direction's color across the segment, so turns get fluid color transitions (like the pen's bezier points).
+- **Opacity**: `blendInto` caps layer alpha at the max stamp value (`max(current, a255)`) — no self-darkening from overlapping stamps, and erasing then re-painting works. The stamp color always blends toward the newest stamp, so overpainting recolors cleanly.
+- **Eraser**: `eraseInto()` sets `alpha *= (1 - a)` for every pixel in the stamp, independent of the stroke map — it only reveals lower layers.
 
 ### Undo System
 
@@ -201,13 +206,13 @@ The brush tool uses Catmull-Rom spline interpolation for smooth curves. Points a
 
 ### Public API (key exports by module)
 
-**state.js**: `state` — the shared state object (includes `brushPath`, `fillTolerance`, `waveFrequency`, `waveAmplitude`, `waveOffset`, `rotationDir`, `spiralFactor`, `cyclone`, `cycloneEye`, `cycloneEyeSoft`, `cycloneEyewall`, `cycloneDecay`, `cycloneBands`, `cycloneBandAmp`)
+**state.js**: `state` — the shared state object (includes `brushSize`, `brushStrength`, `brushFeather`, `brushSmooth`, `brushFixed`, `brushFixedR`, `brushFixedG`, `fillTolerance`, `waveFrequency`, `waveAmplitude`, `waveOffset`, `rotationDir`, `spiralFactor`, `cyclone`, `cycloneEye`, `cycloneEyeSoft`, `cycloneEyewall`, `cycloneDecay`, `cycloneBands`, `cycloneBandAmp`)
 
 **bezier.js**: `cubicBezier(t, p0, p1, p2, p3)`, `sampleBezierSeg(a, b, count)`, `samplePenPath(anchors, closed)`, `hitPenAnchor(px, py, anchors, threshold)`, `insertPenAnchor(anchors, px, py)`, `drawPenPath(ctx, anchors, closed)`, `drawPenHandles(ctx, anchors, opts)`
 
 **canvas.js**: `stage`, `imgCanvas`, `flowCanvas`, `overlayCanvas`, `previewCanvas`, `imgCtx`, `flowCtx`, `ovCtx`, `pvCtx`, `TAU`, `HANDLE_RADIUS`, `clamp8(v)`, `setStageSize(w, h)`
 
-**rendering.js**: `blendInto(target, x, y, targetR, targetG, amount)`, `dirToTarget(dirx, diry)`, `stampInto(target, cx, cy, dirx, diry, radius, strength, feather)`, `rotationalVector(dx, dy, d, rotDir, spiral)`, `renderConstraintTo(target, c)`, `renderPenStrokeTo(target, stroke)`, `floodFillBrush(target, startX, startY, dirx, diry, strength, tolerance)`, `renderComposite()`, `blurOnce()`
+**rendering.js**: `blendInto(target, x, y, targetR, targetG, amount)`, `dirToTarget(dirx, diry)`, `stampInto(target, cx, cy, dirx, diry, radius, strength, feather)`, `stampBrush(target, cx, cy, targetR, targetG, radius, strength, feather)`, `eraseInto(target, cx, cy, radius, strength, feather)`, `rotationalVector(dx, dy, d, rotDir, spiral)`, `renderConstraintTo(target, c)`, `renderPenStrokeTo(target, stroke)`, `floodFillBrush(target, startX, startY, dirx, diry, strength, tolerance)`, `renderComposite()`, `blurOnce()`
 
 **overlay.js**: `drawArrowHead(ctx, x, y, angle, size)`, `drawOverlay()`, `hitTestConstraint(px, py)`, `hitArrowHandle(px, py, s)`
 

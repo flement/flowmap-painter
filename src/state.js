@@ -16,9 +16,6 @@ export const state = {
   brushFixed: false,
   brushFixedR: 128,
   brushFixedG: 128,
-  brushAlpha: null,
-  smoothX: 0,
-  smoothY: 0,
   constraintRadius: 80,
   constraintStrength: 1,
   constraintFeather: 0.5,
@@ -34,14 +31,12 @@ export const state = {
   waveFrequency: 1,
   waveAmplitude: 25,
   waveOffset: 0,
-  brushPath: [],
   fillTolerance: 30,
   fillStrength: 1,
   invertX: false,
   invertY: false,
   dragging: false,
   dragStart: null,
-  lastPaintPos: null,
   penAnchors: [],
   penClosed: false,
   penDraggingHandle: false,
@@ -55,3 +50,5 @@ export const state = {
   selectDragPenPart: null,
   dragLayerId: null,
 };
+
+window.__fs = state;

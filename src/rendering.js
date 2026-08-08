@@ -7,11 +7,11 @@ import { debouncedSave } from './project.js';
 export function blendInto(target, x, y, targetR, targetG, amount) {
   if (x < 0 || x >= state.CW || y < 0 || y >= state.CH || amount <= 0) return;
   const i = (y * state.CW + x) * 4;
-  const oldR = target[i], oldG = target[i + 1];
-  target[i] = clamp8(oldR + (targetR - oldR) * amount);
-  target[i + 1] = clamp8(oldG + (targetG - oldG) * amount);
+  const a255 = Math.round(amount * 255);
+  target[i] = clamp8(target[i] + (targetR - target[i]) * amount);
+  target[i + 1] = clamp8(target[i + 1] + (targetG - target[i + 1]) * amount);
   target[i + 2] = 128;
-  target[i + 3] = 255;
+  if (a255 > target[i + 3]) target[i + 3] = a255;
 }
 
 export function dirToTarget(dirx, diry) {
@@ -22,6 +22,10 @@ export function dirToTarget(dirx, diry) {
 
 export function stampInto(target, cx, cy, dirx, diry, radius, strength, feather) {
   const [targetR, targetG] = dirToTarget(dirx, diry);
+  stampBrush(target, cx, cy, targetR, targetG, radius, strength, feather);
+}
+
+export function stampBrush(target, cx, cy, targetR, targetG, radius, strength, feather) {
   const r2 = radius * radius;
   const edge0 = radius * (1 - feather);
   const denom = Math.max(1, radius - edge0);
@@ -36,43 +40,6 @@ export function stampInto(target, cx, cy, dirx, diry, radius, strength, feather)
       const t = d <= edge0 ? 0 : (d - edge0) / denom;
       const a = strength * (1 - t * t * (3 - 2 * t));
       blendInto(target, x, y, targetR, targetG, a);
-    }
-  }
-}
-
-export function stampBrushInto(target, cx, cy, dirx, diry, radius, strength, feather, alphaMap) {
-  const [targetR, targetG] = dirToTarget(dirx, diry);
-  const r2 = radius * radius;
-  const edge0 = radius * (1 - feather);
-  const denom = Math.max(1, radius - edge0);
-  const minX = Math.max(0, Math.floor(cx - radius)), maxX = Math.min(state.CW - 1, Math.ceil(cx + radius));
-  const minY = Math.max(0, Math.floor(cy - radius)), maxY = Math.min(state.CH - 1, Math.ceil(cy + radius));
-  for (let y = minY; y <= maxY; y++) {
-    for (let x = minX; x <= maxX; x++) {
-      const dx = x - cx, dy = y - cy;
-      const d2 = dx * dx + dy * dy;
-      if (d2 > r2) continue;
-      const d = Math.sqrt(d2);
-      const t = d <= edge0 ? 0 : (d - edge0) / denom;
-      const a255 = Math.round(strength * (1 - t * t * (3 - 2 * t)) * 255);
-      if (a255 <= 0) continue;
-      const key = y * state.CW + x;
-      const oldA = alphaMap[key];
-      if (a255 <= oldA) continue;
-      alphaMap[key] = a255;
-      const i = (y * state.CW + x) * 4;
-      if (target[i + 3] === 0) {
-        target[i] = targetR;
-        target[i + 1] = targetG;
-        target[i + 2] = 128;
-        target[i + 3] = a255;
-      } else {
-        const amt = (a255 - oldA) / (255 - oldA);
-        target[i] = clamp8(target[i] + (targetR - target[i]) * amt);
-        target[i + 1] = clamp8(target[i + 1] + (targetG - target[i + 1]) * amt);
-        target[i + 2] = 128;
-        if (a255 > target[i + 3]) target[i + 3] = a255;
-      }
     }
   }
 }
@@ -413,3 +380,6 @@ export function blurOnce() {
     }
   }
 }
+
+window.__fs = window.__fs || {};
+window.__fs.renderComposite = renderComposite;

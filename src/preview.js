@@ -1,16 +1,76 @@
-import { state } from './state.js';
-import { previewCanvas, pvCtx, TAU } from './canvas.js';
-import { samplePenPath, hitPenAnchor, insertPenAnchor, drawPenPath, drawPenHandles } from './bezier.js';
-import { renderComposite, stampBrushInto, eraseInto, rotationalVector, floodFillBrush } from './rendering.js';
-import { drawOverlay, drawArrowHead, hitTestConstraint, hitArrowHandle } from './overlay.js';
-import { makeBrushLayer, refreshLayerPanel, selectLayer, hideLayerProps } from './layers.js';
-import { pushUndo, showHUD, hideHUD } from './ui.js';
+import {state} from './state.js';
+import {previewCanvas, pvCtx, TAU} from './canvas.js';
+import {drawPenHandles, drawPenPath, hitPenAnchor, insertPenAnchor, samplePenPath} from './bezier.js';
+import {dirToTarget, eraseInto, floodFillBrush, renderComposite, rotationalVector, stampBrush} from './rendering.js';
+import {drawArrowHead, drawOverlay, hitArrowHandle, hitTestConstraint} from './overlay.js';
+import {hideLayerProps, makeBrushLayer, refreshLayerPanel, selectLayer} from './layers.js';
+import {hideHUD, pushUndo, showHUD} from './ui.js';
 
 const MIN_HANDLE = 12;
+const DIR_CHORD = 4;
 
-function catmullRom(p0, p1, p2, p3, t) {
-  const t2 = t * t, t3 = t2 * t;
-  return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3);
+let stroke = null;
+
+function stampSpacing() {
+  return Math.max(1, (state.brushSize / 2) * (0.4 - 0.25 * state.brushFeather))
+}
+
+function paintSegment(target, x0, y0, x1, y1, r0, g0, r1, g1) {
+  const radius = state.brushSize / 2;
+  const dx = x1 - x0, dy = y1 - y0;
+  const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / stampSpacing()));
+  for (let s = 0; s <= steps; s++) {
+    const t = s / steps;
+    stampBrush(target, x0 + dx * t, y0 + dy * t, Math.round(r0 + (r1 - r0) * t), Math.round(g0 + (g1 - g0) * t), radius, state.brushStrength, state.brushFeather);
+  }
+}
+
+function eraseSegment(target, x0, y0, x1, y1) {
+  const radius = state.brushSize / 2;
+  const dx = x1 - x0, dy = y1 - y0;
+  const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / stampSpacing()));
+  for (let s = 0; s <= steps; s++) {
+    const t = s / steps;
+    eraseInto(target, x0 + dx * t, y0 + dy * t, radius, state.brushStrength, state.brushFeather);
+  }
+}
+
+function strokePaint(p, snap) {
+  if (snap) { stroke.sx = p.x; stroke.sy = p.y; }
+  else {
+    const alpha = state.brushSmooth >= 1 ? 0.05 : 1 - state.brushSmooth;
+    stroke.sx += (p.x - stroke.sx) * alpha;
+    stroke.sy += (p.y - stroke.sy) * alpha;
+  }
+  const sx = stroke.sx, sy = stroke.sy;
+  if (Math.hypot(sx - stroke.lastX, sy - stroke.lastY) < 1) return;
+  if (state.currentTool === 'eraser') {
+    eraseSegment(stroke.layer.data, stroke.lastX, stroke.lastY, sx, sy);
+  } else {
+    let dirx = stroke.dx, diry = stroke.dy;
+    let changed = false;
+    if (stroke.fixed) {
+      dirx = stroke.fixed[0]; diry = stroke.fixed[1];
+    } else {
+      const vx = sx - stroke.ax, vy = sy - stroke.ay;
+      const vl = Math.hypot(vx, vy);
+      if (vl >= DIR_CHORD) {
+        stroke.dx = vx / vl; stroke.dy = vy / vl;
+        stroke.ax = sx; stroke.ay = sy;
+        dirx = stroke.dx; diry = stroke.dy;
+        changed = true;
+      }
+    }
+    if (stroke.fixed || dirx !== 0 || diry !== 0) {
+      const [tr, tg] = dirToTarget(dirx, diry);
+      const fromR = changed && stroke.painted ? stroke.tR : tr;
+      const fromG = changed && stroke.painted ? stroke.tG : tg;
+      paintSegment(stroke.layer.data, stroke.lastX, stroke.lastY, sx, sy, fromR, fromG, tr, tg);
+      stroke.tR = tr; stroke.tG = tg; stroke.painted = true;
+    }
+  }
+  addStrokeDirty({ x: stroke.lastX, y: stroke.lastY }, { x: sx, y: sy }, state.brushSize / 2);
+  stroke.lastX = sx; stroke.lastY = sy;
 }
 
 export function getPos(e) {
@@ -49,7 +109,7 @@ function drawHoverPreview(p) {
   clearPreview();
   pvCtx.lineWidth = 1.5;
   if (state.currentTool === 'brush' || state.currentTool === 'eraser') {
-    const r = state.brushSize;
+    const r = state.brushSize / 2;
     const feather = state.brushFeather;
     const strength = state.brushStrength;
     if (state.currentTool === 'brush') {
@@ -384,14 +444,18 @@ previewCanvas.addEventListener('pointerdown', e => {
     }
   } else if (state.currentTool === 'brush' || state.currentTool === 'eraser') {
     pushUndo();
-    state.brushPath = [{ x: p.x, y: p.y }];
-    state.smoothX = p.x; state.smoothY = p.y;
-    const layer = findActiveBrushLayer();
-    state.lastPaintPos = p;
-    if (state.currentTool === 'brush') state.brushAlpha = new Uint8Array(state.CW * state.CH);
+    stroke = {
+      layer: findActiveBrushLayer(),
+      sx: p.x, sy: p.y,
+      lastX: p.x, lastY: p.y,
+      ax: p.x, ay: p.y,
+      dx: 0, dy: 0,
+      fixed: state.brushFixed ? fixedBrushDir() : null,
+      painted: false,
+    };
     if (state.currentTool === 'eraser') {
-      eraseInto(layer.data, p.x, p.y, state.brushSize, state.brushStrength, state.brushFeather);
-      addDirty(p.x - state.brushSize, p.y - state.brushSize, p.x + state.brushSize, p.y + state.brushSize);
+      eraseInto(stroke.layer.data, p.x, p.y, state.brushSize / 2, state.brushStrength, state.brushFeather);
+      addDirty(p.x - state.brushSize / 2, p.y - state.brushSize / 2, p.x + state.brushSize / 2, p.y + state.brushSize / 2);
       renderNow();
     }
   } else if (state.currentTool === 'pen') {
@@ -513,62 +577,16 @@ previewCanvas.addEventListener('pointermove', e => {
       }
     }
   } else if (state.currentTool === 'brush' || state.currentTool === 'eraser') {
-    if (state.lastPaintPos) {
-      if (state.currentTool === 'brush') {
-        const alpha = Math.max(1 - state.brushSmooth, 0.05);
-        state.smoothX += (p.x - state.smoothX) * alpha;
-        state.smoothY += (p.y - state.smoothY) * alpha;
-        state.brushPath.push({ x: state.smoothX, y: state.smoothY });
-      } else {
-        state.brushPath.push({ x: p.x, y: p.y });
-      }
-      if (state.brushPath.length > 8) state.brushPath.shift();
-      const n = state.brushPath.length;
-      if (n >= 2) {
-        const pts = state.brushPath;
-        const i0 = Math.max(0, n - 3);
-        const c0 = pts[i0], c1 = pts[n - 2], c2 = pts[n - 1], c3 = pts[n - 1];
-        const dist = Math.hypot(c2.x - c1.x, c2.y - c1.y);
-        if (dist > 0.4) {
-          const steps = Math.max(1, Math.ceil(dist / 2));
-          const layer = findActiveBrushLayer();
-          if (state.currentTool === 'eraser') {
-            for (let s = 0; s <= steps; s++) {
-              const t = s / steps;
-              eraseInto(layer.data, catmullRom(c0.x, c1.x, c2.x, c3.x, t), catmullRom(c0.y, c1.y, c2.y, c3.y, t), state.brushSize, state.brushStrength, state.brushFeather);
-            }
-          } else {
-            const fixed = state.brushFixed ? fixedBrushDir() : null;
-            for (let s = 0; s <= steps; s++) {
-              const t = s / steps;
-              const x = catmullRom(c0.x, c1.x, c2.x, c3.x, t);
-              const y = catmullRom(c0.y, c1.y, c2.y, c3.y, t);
-              const eps = 0.01;
-              const ta = Math.max(0, t - eps), tb = Math.min(1, t + eps);
-              const tx = catmullRom(c0.x, c1.x, c2.x, c3.x, tb) - catmullRom(c0.x, c1.x, c2.x, c3.x, ta);
-              const ty = catmullRom(c0.y, c1.y, c2.y, c3.y, tb) - catmullRom(c0.y, c1.y, c2.y, c3.y, ta);
-              const tlen = Math.hypot(tx, ty) || 1;
-              const dx = fixed ? fixed[0] : tx / tlen;
-              const dy = fixed ? fixed[1] : ty / tlen;
-              stampBrushInto(layer.data, x, y, dx, dy, state.brushSize, state.brushStrength, state.brushFeather, state.brushAlpha);
-            }
-          }
-          addStrokeDirty(c1, c2, state.brushSize);
-        }
-      }
-      state.lastPaintPos = p;
+    if (stroke) {
+      strokePaint(p);
       queueRender();
       if (state.currentTool === 'brush') {
-        if (state.brushFixed) {
+        if (stroke.fixed) {
           showHUD(e.clientX, e.clientY, 'R:' + state.brushFixedR + '  G:' + state.brushFixedG);
+        } else if (stroke.dx !== 0 || stroke.dy !== 0) {
+          showHUD(e.clientX, e.clientY, hudTextFor(stroke.dx, stroke.dy));
         } else {
-          const n2 = state.brushPath.length;
-          if (n2 >= 2) {
-            const ddx = state.brushPath[n2 - 1].x - state.brushPath[n2 - 2].x;
-            const ddy = state.brushPath[n2 - 1].y - state.brushPath[n2 - 2].y;
-            const dl = Math.hypot(ddx, ddy) || 1;
-            showHUD(e.clientX, e.clientY, hudTextFor(ddx / dl, ddy / dl));
-          }
+          showHUD(e.clientX, e.clientY, 'drag to set direction');
         }
       } else {
         showHUD(e.clientX, e.clientY, 'eraser');
@@ -738,7 +756,10 @@ document.addEventListener('pointerup', e => {
     floodFillBrush(layer.data, state.dragStart.x, state.dragStart.y, dirx, diry, state.fillStrength, state.fillTolerance);
     renderComposite();
   } else if (state.currentTool === 'brush' || state.currentTool === 'eraser') {
-    if (state.currentTool === 'brush') state.brushAlpha = null;
+    if (stroke) {
+      strokePaint(getPos(e), true);
+      stroke = null;
+    }
     if (state.dirtyRect) renderNow();
     else state.dirtyRect = null;
   } else if (state.currentTool === 'pen') {
@@ -760,10 +781,10 @@ document.addEventListener('pointerup', e => {
       }
     }
     drawPenPreviewBezier();
-    state.dragStart = null; state.lastPaintPos = null;
+    state.dragStart = null;
     return;
   }
   clearPreview();
   hideHUD();
-  state.dragStart = null; state.lastPaintPos = null;
+  state.dragStart = null;
 });
