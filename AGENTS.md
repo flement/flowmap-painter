@@ -59,9 +59,10 @@ main.js  ──> state.js, canvas.js, rendering.js, layers.js, ui.js, preview.js
             tools.js → state, ui           setTool(), tool button wiring, CW/CCW toggle.
                           (circular)
 
-            autoflow.js → state, canvas,   Image-to-flow generation: rgbToHsv,
-                          rendering, ui     getWaterMask(), drawHueBar(),
-                          (circular)        updateWaterPreview(), initAutoflow().
+            autoflow.js → state, canvas,   DISABLED (dead code). Image-to-flow
+                          rendering, ui     generation: rgbToHsv, getWaterMask(),
+                          (circular)        drawHueBar(), updateWaterPreview(),
+                                            initAutoflow(). Not imported anywhere.
 
             project.js → state, canvas,    Serialization: serializeProject(),
                           layers            saveToStorage(), debouncedSave(),
@@ -69,12 +70,14 @@ main.js  ──> state.js, canvas.js, rendering.js, layers.js, ui.js, preview.js
 
             ui.js → state, canvas,         Toast notifications, HUD, undo/redo,
                      rendering, overlay,    canvas format picker, panel resize,
-                     layers, tools,        opacity sliders, tool options bindings,
-                     autoflow, project,    keyboard shortcuts, blur, image loading,
-                     preview, demo         reset/export, slider bindings.
+                     layers, tools,         opacity sliders, tool options bindings,
+                     project, preview,      keyboard shortcuts, blur & mask layer
+                     demo                  buttons, image loading, reset/export,
+                                            slider bindings.
 
             demo.js → state, canvas,       Three.js water visualization modal.
-                       rendering, ui        Lazy-loads three from esm.sh CDN.
+                       rendering, ui        Lazy-loads bundled `three` npm dep via
+                                            dynamic import() on first launch.
 
             main.js → all above            Imports side-effect modules (ui.js,
                                             preview.js) to attach event listeners,
@@ -85,7 +88,7 @@ main.js  ──> state.js, canvas.js, rendering.js, layers.js, ui.js, preview.js
 
 `layers.js` → `ui.js` → `tools.js` → `preview.js` (non-critical path, all cross-calls happen in callbacks).
 
-`autoflow.js` → `ui.js` → `autoflow.js` (safe — all cross-calls in callbacks, works in ES modules).
+`autoflow.js` → `ui.js` → `autoflow.js` (moot — autoflow is disabled, no longer imported anywhere).
 
 Never call an imported function at module top-level.
 
@@ -120,7 +123,8 @@ All layers live in `state.layers` (bottom-to-top order). Each has `{ id, type, n
 | `brush` | Raw pixel `Uint8ClampedArray` (CW×CH×4) | Direct pixel copy (non-neutral pixels overwrite) |
 | `pen` | Bezier path: `anchors[]` with `{x,y,h1x,h1y,h2x,h2y}`, `closed`, sampled `points[]` | Stamps along sampled path using `stampInto()` |
 | `constraint` | `shape` object with type-specific geometry | Stamps using `renderConstraintTo()` |
-| `mask` | `maskData` ImageData + optional `rawMaskData` | Scales flow data by mask intensity |
+| `mask` | `maskData` ImageData + optional `rawMaskData`, `{threshold, invert, coastEnabled, coastWidth, coastStrength}` | Scales flow data by mask intensity; optional coastal foam along mask edges via `renderCoastFoam()` |
+| `blur` | `{ passes }` (int) | Applies `blurOnce()` `passes` times over the whole composited map after lower layers |
 
 #### Constraint shapes
 
@@ -132,12 +136,22 @@ All layers live in `state.layers` (bottom-to-top order). Each has `{ id, type, n
 
 ### Rendering Pipeline
 
-`renderComposite()` in `rendering.js`:
-1. Creates fresh `ImageData`, fills with neutral gray
+`renderComposite(dirty)` in `rendering.js`:
+1. (Re)creates `ImageData` if the size changed; fills with neutral gray
 2. Iterates layers bottom-to-top, compositing each visible layer's contribution into `state.flowData`
 3. Writes `flowImageData` to `flowCanvas` via `putImageData`
 4. Calls `drawOverlay()` to refresh selection indicators on `overlayCanvas`
 5. Calls `debouncedSave()` to persist to localStorage (debounced 300ms)
+
+**Dirty-rect partial rendering**: interactive strokes don't re-composite the whole canvas.
+`preview.js` accumulates a `state.dirtyRect` (union of stamp bounds via `addDirty()`) and
+calls `renderComposite(dirty)`. When every visible layer is a `brush`, only the dirty rect is
+re-filled (`fillNeutral`) and re-applied (`applyBrushPixel` loop + partial `putImageData`).
+Any non-brush visible layer (pen/constraint/mask/blur) forces a full composite — a `blur` layer
+always blurs the entire `flowData`, so it defeats partial rendering.
+
+`queueRender()`/`renderNow()` coalesce renders via `requestAnimationFrame`; `renderNow()`
+cancels a pending frame and renders synchronously (used on pointerup).
 
 Call `renderComposite()` after any mutation to layers, tool parameters, or canvas size.
 
@@ -163,6 +177,9 @@ Select tool supports:
 - **Alt+click pen anchor**: deletes anchor (if >2 remain)
 - **Shift+click path**: inserts new anchor at nearest point on curve
 
+Selecting a layer in the layer panel auto-switches the active tool (`selectLayer()` sets
+`brush` for brush layers, `select` for everything else).
+
 ### Keyboard Shortcuts
 
 | Key | Action |
@@ -177,6 +194,7 @@ Select tool supports:
 | S | Swirl |
 | D | Radial |
 | W | Wave |
+| I | Inspect (pipette) |
 | Ctrl/Cmd+Z | Undo |
 | Escape | Finish/cancel pen path |
 | Delete/Backspace | Delete selected layer |
@@ -190,6 +208,10 @@ The scroll handler is data-driven via `SCROLL_PARAMS` table in `preview.js`, key
 ### Fill Tool
 
 Click and drag to set the fill direction. On release, `floodFillBrush()` performs a stack-based flood fill on the active brush layer. It compares R/G values of neighboring pixels against the click-point using `state.fillTolerance` (0–127) and blends matching pixels toward the drag direction using `state.fillStrength`.
+
+### Inspect Tool (Pipette)
+
+Read-only. Hovering shows the composited direction at the cursor (`flowAt()` reads `state.flowData`); the preview canvas draws a 100px direction arrow and the HUD shows the raw R/G values. Clicks are ignored and wheel-scroll is a no-op while active. No layer is created.
 
 ### Brush Tool
 
@@ -206,23 +228,23 @@ Click and drag to set the fill direction. On release, `floodFillBrush()` perform
 
 ### Public API (key exports by module)
 
-**state.js**: `state` — the shared state object (includes `brushSize`, `brushStrength`, `brushFeather`, `brushSmooth`, `brushFixed`, `brushFixedR`, `brushFixedG`, `fillTolerance`, `waveFrequency`, `waveAmplitude`, `waveOffset`, `rotationDir`, `spiralFactor`, `cyclone`, `cycloneEye`, `cycloneEyeSoft`, `cycloneEyewall`, `cycloneDecay`, `cycloneBands`, `cycloneBandAmp`)
+**state.js**: `state` — the shared state object (includes `brushSize`, `brushStrength`, `brushFeather`, `brushSmooth`, `brushFixed`, `brushFixedR`, `brushFixedG`, `fillTolerance`, `fillStrength`, `waveFrequency`, `waveAmplitude`, `waveOffset`, `rotationDir`, `spiralFactor`, `cyclone`, `cycloneEye`, `cycloneEyeSoft`, `cycloneEyewall`, `cycloneDecay`, `cycloneBands`, `cycloneBandAmp`, `dirtyRect`)
 
 **bezier.js**: `cubicBezier(t, p0, p1, p2, p3)`, `sampleBezierSeg(a, b, count)`, `samplePenPath(anchors, closed)`, `hitPenAnchor(px, py, anchors, threshold)`, `insertPenAnchor(anchors, px, py)`, `drawPenPath(ctx, anchors, closed)`, `drawPenHandles(ctx, anchors, opts)`
 
 **canvas.js**: `stage`, `imgCanvas`, `flowCanvas`, `overlayCanvas`, `previewCanvas`, `imgCtx`, `flowCtx`, `ovCtx`, `pvCtx`, `TAU`, `HANDLE_RADIUS`, `clamp8(v)`, `setStageSize(w, h)`
 
-**rendering.js**: `blendInto(target, x, y, targetR, targetG, amount)`, `dirToTarget(dirx, diry)`, `stampInto(target, cx, cy, dirx, diry, radius, strength, feather)`, `stampBrush(target, cx, cy, targetR, targetG, radius, strength, feather)`, `eraseInto(target, cx, cy, radius, strength, feather)`, `rotationalVector(dx, dy, d, rotDir, spiral)`, `renderConstraintTo(target, c)`, `renderPenStrokeTo(target, stroke)`, `floodFillBrush(target, startX, startY, dirx, diry, strength, tolerance)`, `renderComposite()`, `blurOnce()`
+**rendering.js**: `blendInto(target, x, y, targetR, targetG, amount)`, `dirToTarget(dirx, diry)`, `stampInto(target, cx, cy, dirx, diry, radius, strength, feather)`, `stampBrush(target, cx, cy, targetR, targetG, radius, strength, feather)`, `eraseInto(target, cx, cy, radius, strength, feather)`, `rotationalVector(dx, dy, d, rotDir, spiral)`, `renderConstraintTo(target, c)`, `renderPenStrokeTo(target, stroke)`, `floodFillBrush(target, startX, startY, dirx, diry, strength, tolerance)`, `renderCoastFoam(layer)`, `renderComposite(dirty = null)`, `blurOnce()`
 
 **overlay.js**: `drawArrowHead(ctx, x, y, angle, size)`, `drawOverlay()`, `hitTestConstraint(px, py)`, `hitArrowHandle(px, py, s)`
 
-**layers.js**: `makeBrushLayer()`, `refreshLayerPanel()`, `hideLayerProps()`, `updateLayerProps(layer)`, `selectLayer(id)`
+**layers.js**: `makeBrushLayer()`, `makeMaskLayer(maskImageData)`, `makeBlurLayer()`, `loadMaskOnto(layer, file)`, `refreshLayerPanel()`, `hideLayerProps()`, `updateLayerProps(layer)`, `selectLayer(id)`
 
-**preview.js**: `getPos(e)`, `clearPreview()`, `finishPenPath()`
+**preview.js**: `getPos(e)`, `clearPreview()`, `finishPenPath()`, `fixedBrushDir()`
 
-**tools.js**: `setTool(t)`
+**tools.js**: `setTool(t)`, `updateSwirlOpts()`
 
-**autoflow.js**: `initAutoflow()`, `updateWaterPreview()`
+**autoflow.js**: `initAutoflow()`, `updateWaterPreview()` — DISABLED, dead code
 
 **project.js**: `STORAGE_KEY`, `serializeProject()`, `saveToStorage()`, `debouncedSave()`, `loadProject(json)`
 
@@ -240,8 +262,11 @@ Referenced in `index.html`. Key elements that JS touches:
 - `layerList`, `layerProps` — layer panel list and per-layer property editor
 - `toolOptions` — tool options container in right panel
 - `brushOpts`, `shapeOpts`, `selectOpts`, `fillOpts` — tool-specific option sections
+- `smoothPanel`, `fixedDirPanel`, `fixedDirSliders`, `fixedDirPreview` — brush smoothness and fixed-direction UI
 - `rotationDirPanel`, `spiralPanel` — rotation/spiral UI sections
+- `cyclonePanel`, `cycloneEyePanel`, `cycloneSoftPanel`, `cycloneEyewallPanel`, `cycloneDecayPanel`, `cycloneBandsPanel`, `cycloneBandAmpPanel` — cyclone profile UI sections
 - `wavePanel`, `waveAmpPanel`, `waveOffPanel` — wave shape UI sections
+- `newBrushLayerBtn`, `addBlurBtn`, `addMaskBtn` — layer panel action buttons
 - `hud`, `hudBar`, `hudBarFill`, `coordsDisplay` — floating HUD with progress bar and coordinate readout
 - `demoModal`, `demoCanvas`, `demoClose`, `demoRestart` — Three.js demo modal
 - `constraintRadius`, `constraintStrength`, `constraintFeather` — constraint tool sliders
@@ -268,7 +293,7 @@ Referenced in `index.html`. Key elements that JS touches:
 - `flowCtx` is created with `{ willReadFrequently: true }` — required for `putImageData` performance
 - `setStageSize` resizes all 4 canvases to the same pixel dimensions and scales them to fit the viewport
 - Brush pixel data is a flat `Uint8ClampedArray` (CW×CH×4), not an `ImageData` — indices are `(y * CW + x) * 4`
-- The demo modal lazy-loads Three.js from `https://esm.sh/three@0.172.0` via importmap in `index.html`
+- The demo modal lazy-loads Three.js via `await import('three')` (the npm dependency `three` in package.json, bundled by Vite) — not a CDN
 - `constraintRadius`/`constraintStrength`/`constraintFeather` are shared across all constraint tools (arrow, circle, swirl, radial, wave), not just arrows
 - Serialization lives in `project.js`; `rendering.js` calls `debouncedSave()` at end of `renderComposite()`
 - `TAU` (2π) is defined in `canvas.js` — use it instead of `Math.PI * 2`
