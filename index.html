@@ -64,8 +64,9 @@
         <button id="undoBtn" title="Ctrl+Z" disabled>↶</button>
         <button id="resetBtn" title="Reset">Reset</button>
         <button id="exampleBtn" class="accent">Demo</button>
-        <button id="exportBtn" class="primary">Export PNG</button>
-        <button id="exportProjectBtn">Export</button>
+        <button id="exportBtn" class="primary">Export…</button>
+        <button id="quickExportBtn">Quick Export</button>
+        <button id="exportProjectBtn" title="Export project file">JSON</button>
         <button id="importProjectBtn">Import</button>
         <a href="https://github.com/flement/flowmap-painter/issues/new" target="_blank" rel="noopener" class="issue-link" title="Report an issue">Need help?</a>
       </div>
@@ -103,9 +104,9 @@
             </select>
           </div>
           <div class="field" id="canvasCustomDims" style="display:none;">
-            <div class="field-row"><span class="field-label">Width</span><span class="field-value" id="canvasWVal">900</span></div>
+            <div class="field-row"><span class="field-label">Width</span><input class="field-value" id="canvasWVal" type="number"></div>
             <input type="range" id="canvasW" min="100" max="4096" value="900" step="10">
-            <div class="field-row"><span class="field-label">Height</span><span class="field-value" id="canvasHVal">600</span></div>
+            <div class="field-row"><span class="field-label">Height</span><input class="field-value" id="canvasHVal" type="number"></div>
             <input type="range" id="canvasH" min="100" max="4096" value="600" step="10">
             <button id="applyCanvasSize" class="full">Apply Size</button>
           </div>
@@ -137,7 +138,7 @@
           </div>
           -->
           <div class="field">
-            <div class="field-row"><span class="field-label">Opacity</span><span class="field-value" id="opacityVal">100%</span></div>
+            <div class="field-row"><span class="field-label">Opacity</span><input class="field-value" id="opacityVal" type="number" value="100"></div>
             <input type="range" id="opacity" min="0" max="100" value="100">
           </div>
         </div>
@@ -158,19 +159,19 @@
         <div class="section-title"><span class="st-chevron">▸</span><span class="st-label">Brush</span></div>
         <div class="section-body">
           <div class="field">
-            <div class="field-row"><span class="field-label">Size</span><span class="field-value" id="brushSizeVal">30 px</span></div>
+            <div class="field-row"><span class="field-label">Size</span><input class="field-value" id="brushSizeVal" type="number"></div>
             <input type="range" id="brushSize" min="4" max="150" value="30">
           </div>
           <div class="field">
-            <div class="field-row"><span class="field-label">Strength</span><span class="field-value" id="brushStrengthVal">1</span></div>
+            <div class="field-row"><span class="field-label">Strength</span><input class="field-value" id="brushStrengthVal" type="number"></div>
             <input type="range" id="brushStrength" min="5" max="100" value="100">
           </div>
           <div class="field">
-            <div class="field-row"><span class="field-label">Feather</span><span class="field-value" id="brushFeatherVal">0.50</span></div>
+            <div class="field-row"><span class="field-label">Feather</span><input class="field-value" id="brushFeatherVal" type="number"></div>
             <input type="range" id="brushFeather" min="0" max="100" value="50">
           </div>
           <div class="field" id="smoothPanel">
-            <div class="field-row"><span class="field-label">Smooth</span><span class="field-value" id="brushSmoothVal">0%</span></div>
+            <div class="field-row"><span class="field-label">Smooth</span><input class="field-value" id="brushSmoothVal" type="number"></div>
             <input type="range" id="brushSmooth" min="0" max="100" value="0">
           </div>
           <div class="field" id="fixedDirPanel">
@@ -178,9 +179,9 @@
           </div>
           <div class="field" id="fixedDirSliders" style="display:none;">
             <canvas id="fixedDirPreview" width="120" height="56" class="fixed-dir-preview"></canvas>
-            <div class="field-row"><span class="field-label">R (horizontal)</span><span class="field-value" id="brushFixedRVal">128</span></div>
+            <div class="field-row"><span class="field-label">R (horizontal)</span><input class="field-value" id="brushFixedRVal" type="number"></div>
             <input type="range" id="brushFixedR" min="0" max="255" value="128">
-            <div class="field-row"><span class="field-label">G (vertical)</span><span class="field-value" id="brushFixedGVal">128</span></div>
+            <div class="field-row"><span class="field-label">G (vertical)</span><input class="field-value" id="brushFixedGVal" type="number"></div>
             <input type="range" id="brushFixedG" min="0" max="255" value="128">
           </div>
         </div>
@@ -191,11 +192,11 @@
         <div class="section-body">
           <p class="hint">Click & drag to set flow direction. Fills connected similar pixels on the active brush layer.</p>
           <div class="field">
-            <div class="field-row"><span class="field-label">Strength</span><span class="field-value" id="fillStrengthVal">1.00</span></div>
+            <div class="field-row"><span class="field-label">Strength</span><input class="field-value" id="fillStrengthVal" type="number"></div>
             <input type="range" id="fillStrength" min="5" max="100" value="100">
           </div>
           <div class="field">
-            <div class="field-row"><span class="field-label">Tolerance</span><span class="field-value" id="fillToleranceVal">30</span></div>
+            <div class="field-row"><span class="field-label">Tolerance</span><input class="field-value" id="fillToleranceVal" type="number"></div>
             <input type="range" id="fillTolerance" min="0" max="127" value="30">
           </div>
         </div>
@@ -205,15 +206,15 @@
         <div class="section-title"><span class="st-chevron">▸</span><span class="st-label">Constraint</span></div>
         <div class="section-body">
           <div class="field">
-            <div class="field-row"><span class="field-label">Radius</span><span class="field-value" id="constraintRadiusVal">80 px</span></div>
+            <div class="field-row"><span class="field-label">Radius</span><input class="field-value" id="constraintRadiusVal" type="number"></div>
             <input type="range" id="constraintRadius" min="10" max="400" value="80">
           </div>
           <div class="field">
-            <div class="field-row"><span class="field-label">Strength</span><span class="field-value" id="constraintStrengthVal">1</span></div>
+            <div class="field-row"><span class="field-label">Strength</span><input class="field-value" id="constraintStrengthVal" type="number"></div>
             <input type="range" id="constraintStrength" min="5" max="100" value="100">
           </div>
           <div class="field">
-            <div class="field-row"><span class="field-label">Feather</span><span class="field-value" id="constraintFeatherVal">0.50</span></div>
+            <div class="field-row"><span class="field-label">Feather</span><input class="field-value" id="constraintFeatherVal" type="number"></div>
             <input type="range" id="constraintFeather" min="0" max="100" value="50">
           </div>
           <div class="field" id="rotationDirPanel">
@@ -224,58 +225,51 @@
             </div>
           </div>
           <div class="field" id="spiralPanel" style="display:none;">
-            <div class="field-row"><span class="field-label">Spiral</span><span class="field-value" id="spiralFactorVal">+0.40</span></div>
+            <div class="field-row"><span class="field-label">Spiral</span><input class="field-value" id="spiralFactorVal" type="number"></div>
             <input type="range" id="spiralFactor" min="-100" max="100" value="40">
           </div>
           <div class="field" id="cyclonePanel" style="display:none;">
             <div class="field-row"><label class="checkbox-row"><input type="checkbox" id="cycloneToggle" checked> Cyclone profile</label></div>
           </div>
           <div class="field" id="cycloneEyePanel" style="display:none;">
-            <div class="field-row"><span class="field-label">Eye size</span><span class="field-value" id="cycloneEyeVal">12%</span></div>
+            <div class="field-row"><span class="field-label">Eye size</span><input class="field-value" id="cycloneEyeVal" type="number"></div>
             <input type="range" id="cycloneEye" min="0" max="50" value="12">
           </div>
           <div class="field" id="cycloneSoftPanel" style="display:none;">
-            <div class="field-row"><span class="field-label">Eye softness</span><span class="field-value" id="cycloneEyeSoftVal">0.50</span></div>
+            <div class="field-row"><span class="field-label">Eye softness</span><input class="field-value" id="cycloneEyeSoftVal" type="number"></div>
             <input type="range" id="cycloneEyeSoft" min="0" max="100" value="50">
           </div>
           <div class="field" id="cycloneEyewallPanel" style="display:none;">
-            <div class="field-row"><span class="field-label">Eyewall</span><span class="field-value" id="cycloneEyewallVal">25%</span></div>
+            <div class="field-row"><span class="field-label">Eyewall</span><input class="field-value" id="cycloneEyewallVal" type="number"></div>
             <input type="range" id="cycloneEyewall" min="12" max="50" value="25">
           </div>
           <div class="field" id="cycloneDecayPanel" style="display:none;">
-            <div class="field-row"><span class="field-label">Decay</span><span class="field-value" id="cycloneDecayVal">0.60</span></div>
+            <div class="field-row"><span class="field-label">Decay</span><input class="field-value" id="cycloneDecayVal" type="number"></div>
             <input type="range" id="cycloneDecay" min="30" max="150" value="60">
           </div>
           <div class="field" id="cycloneBandsPanel" style="display:none;">
-            <div class="field-row"><span class="field-label">Rainbands</span><span class="field-value" id="cycloneBandsVal">0</span></div>
+            <div class="field-row"><span class="field-label">Rainbands</span><input class="field-value" id="cycloneBandsVal" type="number"></div>
             <input type="range" id="cycloneBands" min="0" max="8" value="0" step="1">
           </div>
           <div class="field" id="cycloneBandAmpPanel" style="display:none;">
-            <div class="field-row"><span class="field-label">Band strength</span><span class="field-value" id="cycloneBandAmpVal">0.30</span></div>
+            <div class="field-row"><span class="field-label">Band strength</span><input class="field-value" id="cycloneBandAmpVal" type="number"></div>
             <input type="range" id="cycloneBandAmp" min="0" max="80" value="30">
           </div>
           <div class="field" id="wavePanel" style="display:none;">
-            <div class="field-row"><span class="field-label">Frequency</span><span class="field-value" id="waveFrequencyVal">1.00</span></div>
+            <div class="field-row"><span class="field-label">Frequency</span><input class="field-value" id="waveFrequencyVal" type="number"></div>
             <input type="range" id="waveFrequency" min="25" max="800" value="100">
           </div>
           <div class="field" id="waveAmpPanel" style="display:none;">
-            <div class="field-row"><span class="field-label">Amplitude</span><span class="field-value" id="waveAmplitudeVal">25 px</span></div>
+            <div class="field-row"><span class="field-label">Amplitude</span><input class="field-value" id="waveAmplitudeVal" type="number"></div>
             <input type="range" id="waveAmplitude" min="0" max="200" value="25">
           </div>
           <div class="field" id="waveOffPanel" style="display:none;">
-            <div class="field-row"><span class="field-label">Offset</span><span class="field-value" id="waveOffsetVal">0.00</span></div>
+            <div class="field-row"><span class="field-label">Offset</span><input class="field-value" id="waveOffsetVal" type="number"></div>
             <input type="range" id="waveOffset" min="-314" max="314" value="0">
           </div>
         </div>
       </div>
 
-      <div class="section" id="encodingSection">
-        <div class="section-title"><span class="st-chevron">▸</span><span class="st-label">Encoding</span></div>
-        <div class="section-body">
-          <label class="checkbox-row"><input type="checkbox" id="invertX"> Invert R</label>
-          <label class="checkbox-row"><input type="checkbox" id="invertY"> Invert G</label>
-        </div>
-      </div>
     </div>
 
     <!-- Layers Panel (bottom half) -->
@@ -313,6 +307,46 @@
     </div>
   </div>
 </div>
+<!-- Export Modal -->
+<div class="modal-overlay" id="exportModal" style="display:none;">
+  <div class="modal modal-small">
+    <div class="modal-header">
+      <span class="modal-title">Export Flow Map</span>
+      <button class="modal-close" id="exportClose">✕</button>
+    </div>
+    <div class="modal-body export-body">
+      <div class="field">
+        <div class="field-row"><span class="field-label">Width</span><input class="field-value" id="exportW" type="number" min="1" max="8192"></div>
+        <div class="field-row"><span class="field-label">Height</span><input class="field-value" id="exportH" type="number" min="1" max="8192"></div>
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-label">Format</span>
+          <select id="exportFormat">
+            <option value="png" selected>PNG</option>
+            <option value="jpeg">JPEG</option>
+            <option value="webp">WebP</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-row"><span class="field-label">Quality</span><input class="field-value" id="exportQualityVal" type="number"></div>
+        <input type="range" id="exportQuality" min="1" max="100" value="90">
+      </div>
+      <div class="field">
+        <label class="checkbox-row"><input type="checkbox" id="exportInvertX"> Invert R</label>
+        <label class="checkbox-row"><input type="checkbox" id="exportInvertY"> Invert G</label>
+      </div>
+      <div class="field">
+        <canvas id="exportPreview" width="160" height="100"></canvas>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="exportCancel">Cancel</button>
+      <button id="exportDo" class="primary">Export</button>
+    </div>
+  </div>
+</div>
+
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>

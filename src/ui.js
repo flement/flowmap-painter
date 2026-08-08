@@ -105,8 +105,6 @@ const canvasFormatSelect = document.getElementById('canvasFormatSelect');
 const canvasCustomDims = document.getElementById('canvasCustomDims');
 const canvasWEl = document.getElementById('canvasW');
 const canvasHEl = document.getElementById('canvasH');
-const canvasWVal = document.getElementById('canvasWVal');
-const canvasHVal = document.getElementById('canvasHVal');
 
 canvasFormatSelect.addEventListener('change', () => {
   if (canvasFormatSelect.value === 'custom') {
@@ -118,11 +116,11 @@ canvasFormatSelect.addEventListener('change', () => {
   if (w && h) resizeCanvases(w, h);
 });
 
-canvasWEl.addEventListener('input', () => canvasWVal.textContent = canvasWEl.value);
-canvasHEl.addEventListener('input', () => canvasHVal.textContent = canvasHEl.value);
 document.getElementById('applyCanvasSize').addEventListener('click', () => {
   resizeCanvases(parseInt(canvasWEl.value, 10), parseInt(canvasHEl.value, 10));
 });
+bindSlider('canvasW', 'canvasWVal', () => {});
+bindSlider('canvasH', 'canvasHVal', () => {});
 
 // ==================== Panel Resize ====================
 const panelResize = document.getElementById('panelResize');
@@ -180,7 +178,7 @@ imgFileInput.addEventListener('change', e => {
       // document.getElementById('waterOpts').style.display = ''; // disabled
       opacity.value = 80;
       flowCanvas.style.opacity = 0.8;
-      opacityVal.textContent = '80%';
+      opacityVal.value = 80;
       // updateWaterPreview(); // disabled
       renderComposite();
       toast('Image loaded');
@@ -196,13 +194,24 @@ imgFileInput.addEventListener('change', e => {
 // ==================== Opacity Slider ====================
 const opacity = document.getElementById('opacity');
 const opacityVal = document.getElementById('opacityVal');
-opacity.addEventListener('input', () => {
+const applyOpacity = () => {
   const v = opacity.value / 100;
   flowCanvas.style.opacity = v;
-  opacityVal.textContent = opacity.value + '%';
+  opacityVal.value = opacity.value;
+};
+opacityVal.min = 0;
+opacityVal.max = 100;
+opacityVal.step = 1;
+opacityVal.inputMode = 'numeric';
+opacity.addEventListener('input', applyOpacity);
+opacityVal.addEventListener('change', () => {
+  let v = parseFloat(opacityVal.value);
+  if (isNaN(v)) { opacityVal.value = opacity.value; return; }
+  v = Math.min(100, Math.max(0, v));
+  opacity.value = v;
+  applyOpacity();
 });
-const v = opacity.value / 100;
-flowCanvas.style.opacity = v;
+applyOpacity();
 
 // ==================== Sliders ====================
 function drawFixedDirPreview() {
@@ -233,40 +242,53 @@ function drawFixedDirPreview() {
   ctx.lineTo(tx + 9 * Math.cos(ang - 2.5), ty + 9 * Math.sin(ang - 2.5));
   ctx.stroke();
 }
-function bindSlider(id, valId, setter, fmt, div) {
+function bindSlider(id, valId, setter, div) {
   const el = document.getElementById(id);
   const valEl = document.getElementById(valId);
+  const scale = div || 1;
+  valEl.min = parseFloat(el.min) / scale;
+  valEl.max = parseFloat(el.max) / scale;
+  valEl.step = parseFloat(el.step || '1') / scale;
+  valEl.inputMode = 'decimal';
+  const setVal = () => { valEl.value = +(parseFloat(el.value) / scale).toFixed(2); };
   el.addEventListener('input', () => {
-    const raw = parseFloat(el.value);
-    const v = div ? raw / div : raw;
+    const v = parseFloat(el.value) / scale;
     setter(v);
-    valEl.textContent = fmt(v);
+    setVal();
   });
+  valEl.addEventListener('change', () => {
+    let v = parseFloat(valEl.value);
+    if (isNaN(v)) { setVal(); return; }
+    const step = parseFloat(valEl.step) || 1;
+    v = Math.min(valEl.max, Math.max(valEl.min, Math.round(v / step) * step));
+    v = +v.toFixed(2);
+    el.value = +(v * scale).toFixed(2);
+    valEl.value = v;
+    setter(v);
+  });
+  setVal();
 }
-bindSlider('brushSize', 'brushSizeVal', v => state.brushSize = v, v => v + ' px');
-bindSlider('brushStrength', 'brushStrengthVal', v => state.brushStrength = v, v => v.toFixed(2), 100);
-bindSlider('brushFeather', 'brushFeatherVal', v => state.brushFeather = v, v => v.toFixed(2), 100);
-bindSlider('brushSmooth', 'brushSmoothVal', v => state.brushSmooth = v, v => Math.round(v * 100) + '%', 100);
-bindSlider('brushFixedR', 'brushFixedRVal', v => { state.brushFixedR = v; drawFixedDirPreview(); }, v => '' + v);
-bindSlider('brushFixedG', 'brushFixedGVal', v => { state.brushFixedG = v; drawFixedDirPreview(); }, v => '' + v);
-bindSlider('constraintRadius', 'constraintRadiusVal', v => state.constraintRadius = v, v => v + ' px');
-bindSlider('constraintStrength', 'constraintStrengthVal', v => state.constraintStrength = v, v => v.toFixed(2), 100);
-bindSlider('constraintFeather', 'constraintFeatherVal', v => state.constraintFeather = v, v => v.toFixed(2), 100);
-bindSlider('spiralFactor', 'spiralFactorVal', v => state.spiralFactor = v, v => (v >= 0 ? '+' : '') + v.toFixed(2), 100);
-bindSlider('cycloneEye', 'cycloneEyeVal', v => state.cycloneEye = v, v => Math.round(v * 100) + '%', 100);
-bindSlider('cycloneEyeSoft', 'cycloneEyeSoftVal', v => state.cycloneEyeSoft = v, v => v.toFixed(2), 100);
-bindSlider('cycloneEyewall', 'cycloneEyewallVal', v => state.cycloneEyewall = v, v => Math.round(v * 100) + '%', 100);
-bindSlider('cycloneDecay', 'cycloneDecayVal', v => state.cycloneDecay = v, v => v.toFixed(2), 100);
-bindSlider('cycloneBands', 'cycloneBandsVal', v => state.cycloneBands = v, v => '' + Math.round(v), 1);
-bindSlider('cycloneBandAmp', 'cycloneBandAmpVal', v => state.cycloneBandAmp = v, v => v.toFixed(2), 100);
-bindSlider('waveFrequency', 'waveFrequencyVal', v => state.waveFrequency = v, v => v.toFixed(2), 100);
-bindSlider('waveAmplitude', 'waveAmplitudeVal', v => state.waveAmplitude = v, v => v + ' px', 1);
-bindSlider('waveOffset', 'waveOffsetVal', v => state.waveOffset = v, v => v.toFixed(2), 100);
-bindSlider('fillStrength', 'fillStrengthVal', v => state.fillStrength = v, v => v.toFixed(2), 100);
-bindSlider('fillTolerance', 'fillToleranceVal', v => state.fillTolerance = v, v => v);
-
-document.getElementById('invertX').addEventListener('change', e => { state.invertX = e.target.checked; renderComposite(); drawFixedDirPreview(); });
-document.getElementById('invertY').addEventListener('change', e => { state.invertY = e.target.checked; renderComposite(); drawFixedDirPreview(); });
+bindSlider('brushSize', 'brushSizeVal', v => state.brushSize = v);
+bindSlider('brushStrength', 'brushStrengthVal', v => state.brushStrength = v, 100);
+bindSlider('brushFeather', 'brushFeatherVal', v => state.brushFeather = v, 100);
+bindSlider('brushSmooth', 'brushSmoothVal', v => state.brushSmooth = v, 100);
+bindSlider('brushFixedR', 'brushFixedRVal', v => { state.brushFixedR = v; drawFixedDirPreview(); });
+bindSlider('brushFixedG', 'brushFixedGVal', v => { state.brushFixedG = v; drawFixedDirPreview(); });
+bindSlider('constraintRadius', 'constraintRadiusVal', v => state.constraintRadius = v);
+bindSlider('constraintStrength', 'constraintStrengthVal', v => state.constraintStrength = v, 100);
+bindSlider('constraintFeather', 'constraintFeatherVal', v => state.constraintFeather = v, 100);
+bindSlider('spiralFactor', 'spiralFactorVal', v => state.spiralFactor = v, 100);
+bindSlider('cycloneEye', 'cycloneEyeVal', v => state.cycloneEye = v, 100);
+bindSlider('cycloneEyeSoft', 'cycloneEyeSoftVal', v => state.cycloneEyeSoft = v, 100);
+bindSlider('cycloneEyewall', 'cycloneEyewallVal', v => state.cycloneEyewall = v, 100);
+bindSlider('cycloneDecay', 'cycloneDecayVal', v => state.cycloneDecay = v, 100);
+bindSlider('cycloneBands', 'cycloneBandsVal', v => state.cycloneBands = v, 1);
+bindSlider('cycloneBandAmp', 'cycloneBandAmpVal', v => state.cycloneBandAmp = v, 100);
+bindSlider('waveFrequency', 'waveFrequencyVal', v => state.waveFrequency = v, 100);
+bindSlider('waveAmplitude', 'waveAmplitudeVal', v => state.waveAmplitude = v, 1);
+bindSlider('waveOffset', 'waveOffsetVal', v => state.waveOffset = v, 100);
+bindSlider('fillStrength', 'fillStrengthVal', v => state.fillStrength = v, 100);
+bindSlider('fillTolerance', 'fillToleranceVal', v => state.fillTolerance = v);
 
 document.getElementById('cycloneToggle').addEventListener('change', e => {
   state.cyclone = e.target.checked;
@@ -281,6 +303,7 @@ document.getElementById('brushFixed').addEventListener('change', e => {
 
 // ==================== Keyboard Shortcuts ====================
 window.addEventListener('keydown', e => {
+  if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
   if (e.key === 'Escape' && state.currentTool === 'pen' && state.penAnchors.length > 0) {
     finishPenPath();
@@ -318,12 +341,87 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   toast('Flow map reset');
 });
 
-document.getElementById('exportBtn').addEventListener('click', () => {
-  const url = flowCanvas.toDataURL('image/png');
+// ==================== Export ====================
+let lastExport = { w: state.CW, h: state.CH, format: 'png', quality: 90, invertX: false, invertY: false };
+const exportModal = document.getElementById('exportModal');
+const exportW = document.getElementById('exportW');
+const exportH = document.getElementById('exportH');
+const exportFormat = document.getElementById('exportFormat');
+const exportQualityEl = document.getElementById('exportQuality');
+const exportPreview = document.getElementById('exportPreview');
+const exportInvertX = document.getElementById('exportInvertX');
+const exportInvertY = document.getElementById('exportInvertY');
+
+const clampDim = v => Math.max(1, Math.min(8192, v));
+const dim = el => clampDim(parseInt(el.value, 10) || state.CW);
+const outCanvas = (w, h, invX, invY) => {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(flowCanvas, 0, 0, w, h);
+  if (invX || invY) {
+    const img = ctx.getImageData(0, 0, w, h);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (invX) { d[i] = 256 - d[i]; if (d[i] === 256) d[i] = 255; }
+      if (invY) { d[i + 1] = 256 - d[i + 1]; if (d[i + 1] === 256) d[i + 1] = 255; }
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  return c;
+};
+function renderExportPreview() {
+  const w = dim(exportW), h = dim(exportH);
+  const c = outCanvas(w, h, exportInvertX.checked, exportInvertY.checked);
+  const pctx = exportPreview.getContext('2d');
+  pctx.clearRect(0, 0, exportPreview.width, exportPreview.height);
+  const s = Math.min(exportPreview.width / w, exportPreview.height / h);
+  const dw = Math.floor(w * s), dh = Math.floor(h * s);
+  pctx.drawImage(c, 0, 0, w, h, Math.floor((exportPreview.width - dw) / 2), Math.floor((exportPreview.height - dh) / 2), dw, dh);
+}
+function runExport() {
+  const w = dim(exportW), h = dim(exportH);
+  const cfg = {
+    w, h, format: exportFormat.value, quality: +exportQualityEl.value,
+    invertX: exportInvertX.checked, invertY: exportInvertY.checked,
+  };
+  const ext = cfg.format === 'jpeg' ? 'jpg' : cfg.format;
+  const url = outCanvas(w, h, cfg.invertX, cfg.invertY).toDataURL('image/' + cfg.format, cfg.format === 'png' ? undefined : cfg.quality / 100);
   const a = document.createElement('a');
-  a.href = url; a.download = 'flow-map.png'; a.click();
+  a.href = url; a.download = 'flow-map.' + ext; a.click();
+  lastExport = cfg;
   toast('Flow map exported');
+}
+function applyLastExport() {
+  exportW.value = lastExport.w; exportH.value = lastExport.h;
+  exportFormat.value = lastExport.format;
+  exportQualityEl.value = lastExport.quality;
+  document.getElementById('exportQualityVal').value = lastExport.quality;
+  exportInvertX.checked = lastExport.invertX;
+  exportInvertY.checked = lastExport.invertY;
+}
+function openExport() {
+  applyLastExport();
+  renderExportPreview();
+  exportModal.style.display = 'flex';
+}
+document.getElementById('exportBtn').addEventListener('click', openExport);
+document.getElementById('quickExportBtn').addEventListener('click', () => {
+  applyLastExport();
+  runExport();
 });
+document.getElementById('exportClose').addEventListener('click', () => exportModal.style.display = 'none');
+document.getElementById('exportCancel').addEventListener('click', () => exportModal.style.display = 'none');
+document.getElementById('exportDo').addEventListener('click', () => {
+  runExport();
+  exportModal.style.display = 'none';
+});
+exportModal.addEventListener('click', e => { if (e.target === exportModal) exportModal.style.display = 'none'; });
+exportW.addEventListener('input', renderExportPreview);
+exportH.addEventListener('input', renderExportPreview);
+exportInvertX.addEventListener('change', renderExportPreview);
+exportInvertY.addEventListener('change', renderExportPreview);
+bindSlider('exportQuality', 'exportQualityVal', () => renderExportPreview());
 
 document.getElementById('exportProjectBtn').addEventListener('click', () => {
   const blob = new Blob([serializeProject()], { type: 'application/json' });

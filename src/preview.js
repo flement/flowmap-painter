@@ -651,7 +651,7 @@ function adjustParam(e, key, min, max, step, scale, label, fmt, barFn) {
   const el = document.getElementById(key);
   const valEl = document.getElementById(key + 'Val');
   if (el) el.value = scale ? v * scale : v;
-  if (valEl) valEl.textContent = fmt(v);
+  if (valEl) valEl.value = +(v.toFixed(2));
   showHUD(e.clientX, e.clientY, label + ' ' + fmt(v), barFn ? barFn(v) : undefined);
 }
 

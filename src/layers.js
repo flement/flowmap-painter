@@ -210,7 +210,7 @@ export function updateLayerProps(layer) {
   title.addEventListener('click', () => layerPropsEl.classList.toggle('collapsed'));
   layerPropsEl.appendChild(title);
 
-  function addSlider(label, value, min, max, step, onChange, fmt) {
+  function addSlider(label, value, min, max, step, onChange) {
     const field = document.createElement('div');
     field.className = 'field';
     const row = document.createElement('div');
@@ -218,9 +218,14 @@ export function updateLayerProps(layer) {
     const lbl = document.createElement('span');
     lbl.className = 'field-label';
     lbl.textContent = label;
-    const val = document.createElement('span');
+    const val = document.createElement('input');
+    val.type = 'number';
     val.className = 'field-value';
-    val.textContent = fmt ? fmt(value) : (typeof value === 'number' && !Number.isInteger(value) ? value.toFixed(2) : value);
+    val.min = min;
+    val.max = max;
+    val.step = step || 1;
+    val.inputMode = 'decimal';
+    val.value = +value.toFixed(2);
     row.appendChild(lbl);
     row.appendChild(val);
     const input = document.createElement('input');
@@ -229,12 +234,21 @@ export function updateLayerProps(layer) {
     input.max = max;
     input.value = value;
     if (step) input.step = step;
+    const apply = v => { onChange(v); renderComposite(); refreshLayerPanel(); };
     input.addEventListener('input', () => {
       const v = parseFloat(input.value);
-      val.textContent = fmt ? fmt(v) : (step && step < 1 ? v.toFixed(2) : v);
-      onChange(v);
-      renderComposite();
-      refreshLayerPanel();
+      val.value = +(v.toFixed(2));
+      apply(v);
+    });
+    val.addEventListener('change', () => {
+      let v = parseFloat(val.value);
+      if (isNaN(v)) { val.value = input.value; return; }
+      const st = parseFloat(val.step) || 1;
+      v = Math.min(max, Math.max(min, Math.round(v / st) * st));
+      v = +v.toFixed(2);
+      input.value = v;
+      val.value = v;
+      apply(v);
     });
     field.appendChild(row);
     field.appendChild(input);
@@ -293,9 +307,9 @@ export function updateLayerProps(layer) {
       cycRow.appendChild(cycCb);
       cycRow.appendChild(document.createTextNode(' Cyclone profile'));
       layerPropsEl.appendChild(cycRow);
-      addSlider('Eye size', s.cycloneEye ?? 0.12, 0, 0.5, 0.01, v => { s.cycloneEye = v; }, v => Math.round(v * 100) + '%');
+      addSlider('Eye size', s.cycloneEye ?? 0.12, 0, 0.5, 0.01, v => { s.cycloneEye = v; });
       addSlider('Eye softness', s.cycloneEyeSoft ?? 0.5, 0, 1, 0.01, v => { s.cycloneEyeSoft = v; });
-      addSlider('Eyewall', s.cycloneEyewall ?? 0.25, 0.12, 0.5, 0.01, v => { s.cycloneEyewall = v; }, v => Math.round(v * 100) + '%');
+      addSlider('Eyewall', s.cycloneEyewall ?? 0.25, 0.12, 0.5, 0.01, v => { s.cycloneEyewall = v; });
       addSlider('Decay', s.cycloneDecay ?? 0.6, 0.3, 1.5, 0.05, v => { s.cycloneDecay = v; });
       addSlider('Rainbands', s.cycloneBands ?? 0, 0, 8, 1, v => { s.cycloneBands = v; });
       addSlider('Band strength', s.cycloneBandAmp ?? 0.3, 0, 0.8, 0.01, v => { s.cycloneBandAmp = v; });
