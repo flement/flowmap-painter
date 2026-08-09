@@ -231,8 +231,7 @@ function drawFixedDirPreview() {
     return;
   }
   const ux = dx / len, uy = dy / len;
-  const L = Math.min(1, Math.max(len, 0.1)) * (H / 2 - 10);
-  const tx = cx + ux * L, ty = cy + uy * L;
+  const tx = cx + ux * len * (W / 2 - 4), ty = cy + uy * len * (H / 2 - 4);
   const ang = Math.atan2(uy, ux);
   ctx.strokeStyle = ink; ctx.lineWidth = 3; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(tx, ty); ctx.stroke();
@@ -242,6 +241,32 @@ function drawFixedDirPreview() {
   ctx.lineTo(tx + 9 * Math.cos(ang - 2.5), ty + 9 * Math.sin(ang - 2.5));
   ctx.stroke();
 }
+
+const fixedDirPreviewEl = document.getElementById('fixedDirPreview');
+function aimFixedDir(e) {
+  const rect = fixedDirPreviewEl.getBoundingClientRect();
+  const nx = Math.max(-1, Math.min(1, (e.clientX - rect.left) / rect.width * 2 - 1));
+  const ny = Math.max(-1, Math.min(1, (e.clientY - rect.top) / rect.height * 2 - 1));
+  const sx = state.invertX ? -1 : 1, sy = state.invertY ? -1 : 1;
+  state.brushFixedR = Math.max(1, Math.min(255, Math.round(128 + nx * 127 * sx)));
+  state.brushFixedG = Math.max(1, Math.min(255, Math.round(128 - ny * 127 * sy)));
+  document.getElementById('brushFixedR').value = state.brushFixedR;
+  document.getElementById('brushFixedG').value = state.brushFixedG;
+  document.getElementById('brushFixedRVal').value = state.brushFixedR;
+  document.getElementById('brushFixedGVal').value = state.brushFixedG;
+  drawFixedDirPreview();
+}
+fixedDirPreviewEl.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  aimFixedDir(e);
+  const move = ev => aimFixedDir(ev);
+  const up = () => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+  };
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', up);
+});
 function bindSlider(id, valId, setter, div) {
   const el = document.getElementById(id);
   const valEl = document.getElementById(valId);

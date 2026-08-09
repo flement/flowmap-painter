@@ -133,6 +133,18 @@ function drawHoverPreview(p) {
     pvCtx.beginPath();
     pvCtx.arc(p.x, p.y, r, 0, TAU);
     pvCtx.stroke();
+    if (state.currentTool === 'brush' && state.brushFixed) {
+      const [dx, dy] = fixedBrushDir();
+      const len = Math.hypot(dx, dy);
+      if (len > 0.05) {
+        const L = r * 1.5 * Math.min(1, len);
+        const ex = p.x + dx / len * L, ey = p.y + dy / len * L;
+        pvCtx.strokeStyle = 'rgba(242,184,75,0.95)';
+        pvCtx.lineWidth = 2;
+        pvCtx.beginPath(); pvCtx.moveTo(p.x, p.y); pvCtx.lineTo(ex, ey); pvCtx.stroke();
+        drawArrowHead(pvCtx, ex, ey, Math.atan2(dy, dx), 7);
+      }
+    }
   } else if (state.currentTool === 'pen') {
     if (state.penAnchors.length > 0) drawPenPreviewBezier();
     pvCtx.strokeStyle = 'rgba(242,184,75,0.8)';
