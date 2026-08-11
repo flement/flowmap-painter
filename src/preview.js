@@ -680,7 +680,7 @@ const SCROLL_PARAMS = {
   },
   none: {
     fill:        { key: 'fillTolerance',       min: 0,    max: 127, step: 1,    scale: 0,   label: 'tolerance', fmt: v => '' + v,       bar: v => v / 127, hover: true },
-    brushLike:   { key: 'brushSize',           min: 4,    max: 150, step: 2,    scale: 0,   label: 'size',      fmt: v => v + ' px',   hover: true },
+    brushLike:   { key: 'brushSize',           min: 4,    max: 400, step: 2,    scale: 0,   label: 'size',      fmt: v => v + ' px',   hover: true },
     constraint:  { key: 'constraintRadius',    min: 10,   max: 400, step: 5,    scale: 0,   label: 'radius',    fmt: v => v + ' px',   hover: true },
   },
 };

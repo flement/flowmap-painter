@@ -320,7 +320,7 @@ export function updateLayerProps(layer) {
       addSlider('Offset', s.offset, -3.14, 3.14, 0.05, v => { s.offset = v; });
     }
   } else if (layer.type === 'pen') {
-    addSlider('Radius', layer.radius, 4, 150, 1, v => { layer.radius = v; });
+    addSlider('Radius', layer.radius, 4, 400, 1, v => { layer.radius = v; });
     addSlider('Strength', layer.strength, 0.05, 1, 0.01, v => { layer.strength = v; });
     addSlider('Feather', layer.feather, 0, 1, 0.01, v => { layer.feather = v; });
   } else if (layer.type === 'brush') {
