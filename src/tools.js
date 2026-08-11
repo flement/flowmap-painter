@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { refreshLayerPanel, hideLayerProps } from './layers.js';
+import { refreshLayerPanel, hideLayerProps, selectLayer } from './layers.js';
 import { drawOverlay } from './overlay.js';
 import { finishPenPath, clearPreview } from './preview.js';
 
@@ -43,7 +43,16 @@ export function setTool(t) {
   const isRadial = t === 'radial';
   cwBtn.textContent = isRadial ? 'Out' : '\u21BB CW';
   ccwBtn.textContent = isRadial ? 'In' : '\u21BA CCW';
-  if (t !== 'select') {
+  if (t === 'brush' || t === 'eraser') {
+    if (!state.layers.some(l => l.id === state.selectedLayerId && l.type === 'brush' && l.visible)) {
+      for (let i = state.layers.length - 1; i >= 0; i--) {
+        if (state.layers[i].type === 'brush' && state.layers[i].visible) {
+          selectLayer(state.layers[i].id);
+          break;
+        }
+      }
+    }
+  } else if (t !== 'select') {
     state.selectedLayerId = null;
     drawOverlay();
     refreshLayerPanel();

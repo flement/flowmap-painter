@@ -62,7 +62,7 @@ function undo() {
     if (l.type === 'brush') {
       const newL = makeBrushLayer();
       newL.data.set(l.data);
-      Object.assign(newL, { id: l.id, name: l.name, visible: l.visible });
+      Object.assign(newL, { id: l.id, name: l.name, visible: l.visible, strength: l.strength == null ? 1 : l.strength });
       state.layers.push(newL);
     } else if (l.type === 'mask') {
       const md = l.maskData;

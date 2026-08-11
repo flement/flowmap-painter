@@ -278,8 +278,8 @@ export function renderCoastFoam(layer) {
   }
 }
 
-function applyBrushPixel(flow, ld, i) {
-  const a = ld[i + 3];
+function applyBrushPixel(flow, ld, i, strength) {
+  const a = Math.round(ld[i + 3] * strength);
   if (a <= 0) return;
   if (a >= 255) {
     flow[i] = ld[i];
@@ -316,15 +316,16 @@ export function renderComposite(dirty = null) {
     if (!layer.visible) continue;
     if (layer.type === 'brush') {
       const ld = layer.data;
+      const strength = layer.strength == null ? 1 : layer.strength;
       if (partial) {
         for (let y = dirty.y0; y <= dirty.y1; y++) {
           let i = (y * state.CW + dirty.x0) * 4;
           for (let x = dirty.x0; x <= dirty.x1; x++, i += 4) {
-            applyBrushPixel(flow, ld, i);
+            applyBrushPixel(flow, ld, i, strength);
           }
         }
       } else {
-        for (let i = 0; i < flow.length; i += 4) applyBrushPixel(flow, ld, i);
+        for (let i = 0; i < flow.length; i += 4) applyBrushPixel(flow, ld, i, strength);
       }
     } else if (layer.type === 'pen') {
       renderPenStrokeTo(flow, layer);

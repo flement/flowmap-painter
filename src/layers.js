@@ -14,7 +14,7 @@ export function makeBrushLayer() {
   for (let i = 0; i < data.length; i += 4) {
     data[i] = 128; data[i + 1] = 128; data[i + 2] = 128; data[i + 3] = 0;
   }
-  return { id: state.nextId++, type: 'brush', name: 'Brush', visible: true, data };
+  return { id: state.nextId++, type: 'brush', name: 'Brush', visible: true, strength: 1, data };
 }
 
 export function makeMaskLayer(maskImageData) {
@@ -324,10 +324,7 @@ export function updateLayerProps(layer) {
     addSlider('Strength', layer.strength, 0.05, 1, 0.01, v => { layer.strength = v; });
     addSlider('Feather', layer.feather, 0, 1, 0.01, v => { layer.feather = v; });
   } else if (layer.type === 'brush') {
-    const hint = document.createElement('p');
-    hint.className = 'hint';
-    hint.textContent = 'Brush layers store pixel data. Use the brush tool to modify.';
-    layerPropsEl.appendChild(hint);
+    addSlider('Strength', layer.strength == null ? 1 : layer.strength, 0, 1, 0.01, v => { layer.strength = v; });
   } else if (layer.type === 'blur') {
     addSlider('Passes', layer.passes, 1, 20, 1, v => { layer.passes = v; });
     const hint = document.createElement('p');
@@ -413,7 +410,7 @@ export function selectLayer(id) {
   const tool = layer && layer.type === 'brush' ? 'brush' : 'select';
   if (state.currentTool !== tool) setTool(tool);
   state.selectedLayerId = id;
-  document.getElementById('brushOpts').style.display = 'none';
+  document.getElementById('brushOpts').style.display = layer && layer.type === 'brush' ? '' : 'none';
   document.getElementById('shapeOpts').style.display = 'none';
   document.getElementById('selectOpts').style.display = 'none';
   refreshLayerPanel();

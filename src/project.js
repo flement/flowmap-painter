@@ -73,7 +73,7 @@ export function loadProject(json) {
             d[i + 3] = (d[i] !== 128 || d[i + 1] !== 128) ? 255 : 0;
           }
         }
-        Object.assign(layer, { id: l.id, name: l.name, visible: l.visible });
+        Object.assign(layer, { id: l.id, name: l.name, visible: l.visible, strength: l.strength == null ? 1 : l.strength });
         newLayers.push(layer);
       } else if (l.type === 'mask' && l.maskData) {
         const md = l.maskData;
