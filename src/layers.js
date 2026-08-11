@@ -225,15 +225,15 @@ export function updateLayerProps(layer) {
     val.max = max;
     val.step = step || 1;
     val.inputMode = 'decimal';
-    val.value = +value.toFixed(2);
     row.appendChild(lbl);
     row.appendChild(val);
     const input = document.createElement('input');
     input.type = 'range';
     input.min = min;
     input.max = max;
-    input.value = value;
     if (step) input.step = step;
+    input.value = value;
+    val.value = +parseFloat(input.value).toFixed(2);
     const apply = v => { onChange(v); renderComposite(); refreshLayerPanel(); };
     input.addEventListener('input', () => {
       const v = parseFloat(input.value);
